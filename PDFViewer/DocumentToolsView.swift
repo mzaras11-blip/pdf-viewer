@@ -2,8 +2,10 @@ import PDFKit
 import SwiftUI
 
 /// The PDF Tools sheet: the Acrobat-style operations on the open
-/// document — Make Searchable (OCR), Compress, Split, Export Pages
-/// as Images, and Password (protect / remove). Every tool works on
+/// document — Make Searchable (OCR), Key Points (highlight the
+/// important sentences in a copy, or an Essentials Only PDF),
+/// Compress, Split, Export Pages as Images, and Password
+/// (protect / remove). Every tool works on
 /// a fresh copy of the library file and saves its result as a NEW
 /// library document; the document being read is never changed by a
 /// tool. (Redact and Cover & Replace Text live in the reader's Edit
@@ -30,6 +32,8 @@ struct DocumentToolsView: View {
 
     // Tool inputs
     @State private var compressQuality: PDFTools.CompressQuality = .balanced
+    @State private var keyFrom = 1
+    @State private var keyTo = 1
     @State private var splitFrom = 1
     @State private var splitTo = 1
     @State private var exportFrom = 1
@@ -115,6 +119,7 @@ struct DocumentToolsView: View {
                     protectSection
                 } else {
                     ocrSection
+                    keyPointsSection
                     compressSection
                     splitSection
                     exportSection
@@ -130,6 +135,7 @@ struct DocumentToolsView: View {
                 }
             }
             .onAppear {
+                if keyTo == 1 { keyTo = pageCount }
                 if splitTo == 1 { splitTo = pageCount }
                 if exportTo == 1 { exportTo = pageCount }
             }
@@ -150,6 +156,35 @@ struct DocumentToolsView: View {
             Text("Searchable Text")
         } footer: {
             Text("For scans and image-only PDFs: recognizes the words on each page, on this device, and saves a copy with an invisible text layer — so search, text selection, and copy work. Pages that already have text are left as they are.")
+        }
+    }
+
+    private var keyPointsSection: some View {
+        Section {
+            Stepper("From page \(keyFrom)", value: $keyFrom, in: 1...pageCount)
+                .onChange(of: keyFrom) { _, newValue in
+                    if keyTo < newValue { keyTo = newValue }
+                }
+            Stepper("To page \(keyTo)", value: $keyTo, in: 1...pageCount)
+                .onChange(of: keyTo) { _, newValue in
+                    if keyFrom > newValue { keyFrom = newValue }
+                }
+            Button {
+                runKeyPoints(.highlight)
+            } label: {
+                Label("Highlight Key Points in a Copy", systemImage: "highlighter")
+            }
+            .disabled(isBusy)
+            Button {
+                runKeyPoints(.essentials)
+            } label: {
+                Label("Essentials Only PDF", systemImage: "list.bullet.rectangle.portrait")
+            }
+            .disabled(isBusy)
+        } header: {
+            Text("Key Points")
+        } footer: {
+            Text(KeyPoints.explanation + " Highlight saves a copy of the whole document with the key sentences marked in yellow; Essentials saves a short new PDF with just those sentences, page by page — the filler left behind. Either way this document is unchanged, and pages without readable text are recognized with OCR first, on this device.")
         }
     }
 
@@ -345,6 +380,69 @@ struct DocumentToolsView: View {
                              note: "Search, text selection, and copy now work on the copy.")
             } else {
                 jobFailed("OCR didn't work on this document.")
+            }
+        }
+    }
+
+    private enum KeyPointsMode {
+        case highlight
+        case essentials
+    }
+
+    /// Key Points, both outputs from one analysis. Pages in the
+    /// chosen range that have no usable text layer go through the
+    /// OCR engine first (the working copy becomes the searchable
+    /// one, so a highlighted copy of a scan is searchable too);
+    /// then the extractive scorer picks each page's key sentences.
+    private func runKeyPoints(_ mode: KeyPointsMode) {
+        guard let source = freshDocument() else {
+            jobFailed("Couldn't open this document.")
+            return
+        }
+        let indexes = Array((keyFrom - 1)...(keyTo - 1))
+        let sink = beginJob("Finding the key points…", total: source.pageCount)
+        let baseName = controller.entry.name
+        Task {
+            let outcome = await Task.detached(priority: .userInitiated) {
+                () -> (analysis: KeyPoints.Analysis, document: PDFDocument)? in
+                var working = source
+                if !KeyPoints.pagesMissingText(source, pageIndexes: indexes).isEmpty,
+                   let searchable = PDFTools.ocrDocument(source, sink: sink) {
+                    working = searchable
+                }
+                guard !sink.cancelled,
+                      let analysis = KeyPoints.analyze(document: working,
+                                                       pageIndexes: indexes)
+                else { return nil }
+                switch mode {
+                case .highlight:
+                    let placed = KeyPoints.addHighlights(to: working,
+                                                         analysis: analysis)
+                    return placed > 0 ? (analysis, working) : nil
+                case .essentials:
+                    guard let essentials = KeyPoints.essentialsDocument(
+                        analysis: analysis, documentName: baseName)
+                    else { return nil }
+                    return (analysis, essentials)
+                }
+            }.value
+            if sink.cancelled {
+                jobFailed("Cancelled — no copy was saved.")
+            } else if let outcome {
+                let suffix = mode == .highlight ? " (Key Points)" : " (Essentials)"
+                if let entry = library.registerDocument(outcome.document,
+                                                        name: baseName + suffix) {
+                    let count = outcome.analysis.sentenceCount
+                    let pages = outcome.analysis.pages.count
+                    let note = mode == .highlight
+                        ? "\(count) key sentences highlighted in yellow, from \(pages) page\(pages == 1 ? "" : "s")."
+                        : "\(count) key sentences from \(pages) page\(pages == 1 ? "" : "s"), in the document's own words — the filler is left behind."
+                    jobSucceeded(entry: entry, note: note)
+                } else {
+                    jobFailed("The Key Points copy couldn't be saved.")
+                }
+            } else {
+                jobFailed("No readable text was found in those pages, so there are no key points to pick. Key Points recognizes text-less pages with OCR automatically — these pages may be blank, or pictures with no words in them.")
             }
         }
     }

@@ -4,8 +4,9 @@ import UIKit
 
 /// The home screen: the reader's library. Recents sorted by last
 /// opened, favorites pinned by a star, plus the ways in — open from
-/// Files, scan paper with the document camera, merge several PDFs
-/// into one, and Settings.
+/// Files, scan paper with the document camera, take a photo, turn
+/// picked photos into a PDF, merge several PDFs into one, and
+/// Settings.
 struct LibraryView: View {
     @EnvironmentObject private var library: LibraryStore
 
@@ -13,6 +14,7 @@ struct LibraryView: View {
     @State private var showingMergePicker = false
     @State private var showingSettings = false
     @State private var showingScanner = false
+    @State private var showingCamera = false
     @State private var showingPhotoPicker = false
     @State private var scanNotice: ScanNotice?
     @State private var mergeSelection: Set<UUID> = []
@@ -52,6 +54,11 @@ struct LibraryView: View {
                         Label("Scan Document", systemImage: "doc.viewfinder")
                     }
                     Button {
+                        photoTapped()
+                    } label: {
+                        Label("Take Photo…", systemImage: "camera")
+                    }
+                    Button {
                         showingPicker = true
                     } label: {
                         Label("Open PDF…", systemImage: "folder")
@@ -82,6 +89,13 @@ struct LibraryView: View {
             PhotoPicker { images in
                 finishPhotos(images)
             }
+        }
+        .fullScreenCover(isPresented: $showingCamera) {
+            CameraPicker { image in
+                // A cancelled shot delivers nil: nothing is created.
+                if let image { finishCameraPhoto(image) }
+            }
+            .ignoresSafeArea()
         }
         .confirmationDialog("Saved to Your Library",
                             isPresented: $showOCROffer,
@@ -328,6 +342,41 @@ struct LibraryView: View {
         }
     }
 
+    // MARK: - Take Photo
+
+    /// The Take Photo action: the plain camera, one shot. Same
+    /// self-explaining edges as scanning — no camera, or camera
+    /// access off, gets a plain message instead of a dead end.
+    private func photoTapped() {
+        guard CameraPicker.isAvailable else {
+            scanNotice = ScanNotice(
+                title: "Camera Isn't Available",
+                message: "This device has no camera to take a photo with. You can still open PDFs from Files, or turn photos you already have into a PDF with Photos to PDF.",
+                offerSettings: false)
+            return
+        }
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted:
+            scanNotice = ScanNotice(
+                title: "Camera Access Is Off",
+                message: "PDF Viewer & Editor needs the camera to take a photo. Turn on Camera for the app in Settings, then try again.",
+                offerSettings: true)
+        default:
+            showingCamera = true
+        }
+    }
+
+    /// One camera photo becomes a one-page library document
+    /// through the same assembly + offer-OCR landing as a scan.
+    private func finishCameraPhoto(_ image: UIImage) {
+        if let entry = library.importImages(images: [image],
+                                            name: Self.cameraPhotoName()) {
+            offerOCR(for: entry)
+        } else {
+            importError = "That photo couldn't be saved as a PDF."
+        }
+    }
+
     /// Picked photos become a library document (one image per page)
     /// through the same offer-OCR landing as a scan.
     private func finishPhotos(_ images: [UIImage]) {
@@ -390,6 +439,11 @@ struct LibraryView: View {
     /// Default name for a photos-built document.
     private static func photoName() -> String {
         "Photos " + Self.timestamp()
+    }
+
+    /// Default name for a camera-photo document, e.g. "Photo 2026-11-16 18:45".
+    private static func cameraPhotoName() -> String {
+        "Photo " + Self.timestamp()
     }
 
     private static func timestamp() -> String {

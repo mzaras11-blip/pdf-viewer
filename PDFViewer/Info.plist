@@ -4,18 +4,6 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>PDF Viewer &amp; Editor</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleName</key>
-	<string>PDF Viewer &amp; Editor</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
-	<key>CFBundleVersion</key>
-	<string>3</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -31,13 +19,25 @@
 			</array>
 		</dict>
 	</array>
-	<key>LSSupportsOpeningDocumentsInPlace</key>
-	<true/>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleName</key>
+	<string>PDF Viewer &amp; Editor</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>4</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-9461680459080238~8969876020</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>PDF Viewer &amp; Editor uses the camera to scan documents into PDFs.</string>
@@ -45,12 +45,6 @@
 	<string>PDF Viewer &amp; Editor saves exported page images to your photo library when you choose Save Image in the share sheet.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>We use your device's advertising identifier to show you ads that are more relevant to you. If you choose not to allow tracking, you'll still see ads — they just won't be personalized. Remove Ads in Settings turns ads off completely.</string>
-	<key>UILaunchScreen</key>
-	<dict/>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -253,6 +247,12 @@
 			<key>SKAdNetworkIdentifier</key>
 			<string>3qcr597p9d.skadnetwork</string>
 		</dict>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 </dict>
 </plist>

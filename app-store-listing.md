@@ -3,7 +3,7 @@
 - **Name:** PDF Viewer & Editor
 - **Subtitle:** Read, Annotate & Sign PDFs
 - **Bundle ID:** com.swishgame.pdfviewer
-- **Version:** 1.0 (build 3)
+- **Version:** 1.0 (build 4)
 - **Primary category:** Utilities
 - **Secondary category:** Productivity
 
@@ -22,6 +22,7 @@ When a document needs more than reading, the editor is right there:
 FEATURES
 • READ — smooth native rendering, pinch zoom, page indicator, bookmarks, favorites, and a recents library that remembers your place
 • SCAN — point the camera at paper and get a clean PDF: automatic edge detection and perspective correction, multi-page scans saved straight into your library
+• TAKE A PHOTO — just need one page, fast? Snap it with the regular camera and it lands in your library as a PDF, ready to read, search, and sign
 • SEARCH — full-text search with a results list that jumps straight to each match
 • HIGHLIGHT & UNDERLINE — mark up text in four colors
 • DRAW — freehand ink in your choice of color and pen width, saved right into the document
@@ -29,6 +30,7 @@ FEATURES
 • FILL FORMS — tap and type into real PDF form fields, then save
 • SIGN — draw your signature once, save it, and stamp it onto any page, positioned exactly where you want it
 • OCR — make scans and image-only PDFs searchable: on-device text recognition adds an invisible text layer, so search, selection, and copy just work
+• KEY POINTS — skip the filler: on-device analysis picks out the sentences that look most important on each page (figures, dates, and names get priority) — get a copy with them highlighted, or an Essentials PDF that quotes just those sentences and leaves the rest behind
 • COMPRESS — shrink a PDF for email at screen, balanced, or print quality, with the before and after sizes shown up front
 • SPLIT — pull any page range out as its own new PDF
 • CONVERT — turn photos into a PDF, or export pages as PNG images to Photos and anywhere else
@@ -51,7 +53,7 @@ pdf,viewer,editor,ocr,scan,sign,annotate,merge,compress,redact,split,form,highli
 
 ## Support / Marketing Notes
 
-- Listing sync (2026-11-16): scanning shipped in build 2 and the pro tools (OCR, COMPRESS, SPLIT, CONVERT, PASSWORD, REDACT, COVER & REPLACE TEXT) in build 3, after the live App Store Connect description was written — the ASC description does NOT have the SCAN bullet or the seven build-3 bullets above yet. Add those lines to the live ASC description before submitting (browser step; not done from the build pipeline).
+- Listing sync (2026-11-16): scanning shipped in build 2, the pro tools (OCR, COMPRESS, SPLIT, CONVERT, PASSWORD, REDACT, COVER & REPLACE TEXT) in build 3, and TAKE A PHOTO + KEY POINTS in build 4, after the live App Store Connect description was written — the ASC description does NOT have the SCAN bullet, the seven build-3 bullets, or the two build-4 bullets (TAKE A PHOTO, KEY POINTS) above yet. Add those lines to the live ASC description before submitting (browser step; not done from the build pipeline).
 
 
 - Support URL: https://mzaras11-blip.github.io/pdf-viewer/support.html

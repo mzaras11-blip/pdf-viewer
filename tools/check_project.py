@@ -64,7 +64,7 @@ check(info.get("NSCameraUsageDescription")
 check(info.get("NSPhotoLibraryAddUsageDescription")
       == "PDF Viewer & Editor saves exported page images to your photo library when you choose Save Image in the share sheet.",
       "NSPhotoLibraryAddUsageDescription carries the export purpose string")
-check(info.get("CFBundleVersion") == "3", "CFBundleVersion is 3 (build 3)")
+check(info.get("CFBundleVersion") == "4", "CFBundleVersion is 4 (build 4)")
 doc_types = info.get("CFBundleDocumentTypes", [])
 check(any("com.adobe.pdf" in dt.get("LSItemContentTypes", []) for dt in doc_types),
       "PDF document type registered for Open in…")
@@ -137,8 +137,8 @@ check(pbx.count("IPHONEOS_DEPLOYMENT_TARGET = 17.0;") == 2,
       "deployment target 17.0 in Debug+Release")
 check(pbx.count("INFOPLIST_FILE = PDFViewer/Info.plist;") == 2,
       "INFOPLIST_FILE path in Debug+Release")
-check(pbx.count("CURRENT_PROJECT_VERSION = 3;") == 2,
-      "CURRENT_PROJECT_VERSION = 3 in Debug+Release (build 3)")
+check(pbx.count("CURRENT_PROJECT_VERSION = 4;") == 2,
+      "CURRENT_PROJECT_VERSION = 4 in Debug+Release (build 4)")
 check("swift-package-manager-google-mobile-ads" in pbx, "Google Mobile Ads SPM package referenced")
 check("minimumVersion = 11.0.0" in pbx, "SPM version rule matches Santa (11.0.0 upToNextMajor)")
 
@@ -203,13 +203,16 @@ expected_imports = {
     "DrawingViews.swift": ["import PencilKit", "import PDFKit"],
     "ThumbnailsView.swift": ["import PDFKit"],
     "SystemSheets.swift": ["import UniformTypeIdentifiers", "import PhotosUI",
-                           "PHPickerViewController"],
+                           "PHPickerViewController", "UIImagePickerController"],
     "ScannerView.swift": ["import VisionKit", "VNDocumentCameraViewController"],
+    "KeyPoints.swift": ["import NaturalLanguage", "import PDFKit",
+                        "NLTokenizer", "NLTagger", "NSDataDetector"],
     "LibraryView.swift": ["import AVFoundation", "DocumentScanner", "PhotoPicker",
-                          "PDFTools"],
+                          "CameraPicker", "PDFTools"],
     "PDFTools.swift": ["import PDFKit", "import Vision", "import CoreText",
                        "VNRecognizeTextRequest"],
-    "DocumentToolsView.swift": ["import SwiftUI", "import PDFKit", "PDFTools"],
+    "DocumentToolsView.swift": ["import SwiftUI", "import PDFKit", "PDFTools",
+                                "KeyPoints"],
     "ReaderController.swift": ["import PDFKit", "import UIKit", "PDFTools"],
     "ReaderView.swift": ["import SwiftUI", "DocumentToolsView"],
 }
@@ -233,6 +236,8 @@ definitions = {
     "ProgressSink": "PDFTools.swift",
     "DocumentToolsView": "DocumentToolsView.swift",
     "PhotoPicker": "SystemSheets.swift",
+    "CameraPicker": "SystemSheets.swift",
+    "KeyPoints": "KeyPoints.swift",
 }
 for type_name, defining_file in definitions.items():
     pattern = rf"(?:final class|class|struct|enum)\s+{type_name}\b"
@@ -252,6 +257,7 @@ uses = [
     ("PDFTools", "LibraryView.swift"), ("ProgressSink", "DocumentToolsView.swift"),
     ("ProgressSink", "LibraryView.swift"), ("DocumentToolsView", "ReaderView.swift"),
     ("PhotoPicker", "LibraryView.swift"), ("DocumentToolsView", "ReaderView.swift"),
+    ("CameraPicker", "LibraryView.swift"), ("KeyPoints", "DocumentToolsView.swift"),
 ]
 for type_name, using_file in uses:
     check(re.search(rf"\b{type_name}\b", swift_texts[using_file]) is not None,
@@ -315,6 +321,54 @@ check("pendingRedactionCount" in swift_texts["ReaderView.swift"]
       "ReaderView surfaces pending redaction state (count / apply / discard)")
 check("PHPickerViewControllerDelegate" in swift_texts["SystemSheets.swift"],
       "SystemSheets PhotoPicker coordinator is the PHPicker delegate")
+
+print("== Build 4: Take Photo + Key Points ==")
+sheets_text = swift_texts["SystemSheets.swift"]
+check("struct CameraPicker" in sheets_text,
+      "SystemSheets.CameraPicker wraps the system camera picker")
+check("UIImagePickerController.isSourceTypeAvailable(.camera)" in sheets_text,
+      "CameraPicker availability is the real camera check")
+check("func imagePickerControllerDidCancel" in sheets_text
+      and "UIImagePickerControllerDelegate" in sheets_text,
+      "CameraPicker coordinator handles cancel (delivers nil, creates nothing)")
+library_text = swift_texts["LibraryView.swift"]
+check("Take Photo…" in library_text,
+      "library + menu offers Take Photo…")
+check("private func photoTapped()" in library_text,
+      "LibraryView.photoTapped gates camera availability + permission")
+check("private func finishCameraPhoto(_ image: UIImage)" in library_text,
+      "LibraryView.finishCameraPhoto lands a camera photo in the library")
+check("importImages(images: [image]" in library_text,
+      "camera photo becomes a PDF through the scan/photo assembly")
+keypoints_text = swift_texts["KeyPoints.swift"]
+check("static func analyze(document:" in keypoints_text,
+      "KeyPoints.analyze scores and selects key sentences")
+check("NLTokenizer(unit: .sentence)" in keypoints_text,
+      "sentences are split with the Natural Language tokenizer")
+check("NLTagger(tagSchemes: [.nameType])" in keypoints_text,
+      "named entities come from NLTagger (on-device)")
+check("NSDataDetector" in keypoints_text,
+      "dates are detected with NSDataDetector")
+check("static func pagesMissingText(" in keypoints_text,
+      "KeyPoints.pagesMissingText finds pages that need OCR first")
+check("static func addHighlights(to document:" in keypoints_text,
+      "KeyPoints.addHighlights paints highlights at sentence bounds")
+check("selectionsByLine()" in keypoints_text,
+      "highlights are placed line by line, like the reader's own markup")
+check("static func essentialsDocument(analysis:" in keypoints_text,
+      "KeyPoints.essentialsDocument builds the Essentials Only PDF")
+check("Key Points —" in keypoints_text and "Page \\(pageResult.pageIndex + 1)" in keypoints_text,
+      "Essentials PDF carries the title line and per-page headings")
+check("doesn't rewrite anything" in keypoints_text,
+      "the honest no-rewrite explanation ships in the engine")
+tools_view_text = swift_texts["DocumentToolsView.swift"]
+check("private func runKeyPoints(_ mode: KeyPointsMode)" in tools_view_text,
+      "tools sheet runs Key Points for both outputs")
+check("KeyPoints.pagesMissingText" in tools_view_text
+      and "PDFTools.ocrDocument" in tools_view_text,
+      "Key Points flow OCRs text-less pages before scoring")
+check("(Key Points)" in tools_view_text and "(Essentials)" in tools_view_text,
+      "Key Points outputs are registered as (Key Points) / (Essentials) copies")
 
 print("== AdMob IDs (real, swapped in 2026-11-16) ==")
 adm = swift_texts["ADMOB-IDS.swift"]

@@ -27,8 +27,8 @@ PDFViewer/
   LibraryStore.swift            recents + page bookmarks (JSON in App
                                 Support); PDF files in Documents/Imports
   LibraryView.swift             home: recents, favorites, open, merge
-                                mode, photos-to-PDF, post-import OCR
-                                offer + progress
+                                mode, take-photo, photos-to-PDF,
+                                post-import OCR offer + progress
   ReaderView.swift              reader screen: toolbars, tool modes,
                                 sheets, ad session/block/page-guard wiring
   PDFKitView.swift              UIViewRepresentable PDFView + page-change
@@ -43,7 +43,9 @@ PDFViewer/
   SearchView.swift              search sheet + outline sheet + bookmarks
   SettingsView.swift            Remove Ads / restore, reading background,
                                 about
-  SystemSheets.swift            UIDocumentPicker + share sheet wrappers
+  SystemSheets.swift            UIDocumentPicker, PHPicker, camera
+                                picker (Take Photo) + share sheet
+                                wrappers
   ScannerView.swift             VisionKit document camera wrapper
                                 (VNDocumentCameraViewController); the
                                 scan-to-PDF assembly is
@@ -55,9 +57,13 @@ PDFViewer/
                                 rasterizing, background-color sampling;
                                 ProgressSink = progress + cancel
   DocumentToolsView.swift       the reader's PDF Tools sheet: OCR,
-                                compress, split, PNG export, password
-                                protect / remove — every tool saves a
-                                NEW library document
+                                Key Points, compress, split, PNG
+                                export, password protect / remove —
+                                every tool saves a NEW library document
+  KeyPoints.swift               the build-4 Key Points engine:
+                                extractive sentence scoring (Natural
+                                Language), highlight placement, and
+                                the Essentials Only PDF builder
   Info.plist                    display name, GADApplicationIdentifier
                                 (real AdMob app ID), ATT string, SKAdNetwork
                                 list (same 50 as Santa), document type
@@ -215,6 +221,76 @@ by a tool.
   file underneath the patch** — fine for fixing a typo on a form,
   useless as privacy protection; the editor sheet says so and
   points at Redact for secrets.
+
+## Take Photo & Key Points (added in build 4, 2026-11-16)
+
+Owner requests: "add where you take a picture" and "a feature in
+the PDF viewer where it highlights the important information out
+of a page and throws out the filler stuff."
+
+- **Take Photo…** (library + menu, under Scan Document) — the
+  third and simplest way a page gets in, beside the document
+  scanner and Photos to PDF. It presents the **regular camera**
+  (`UIImagePickerController`, wrapped by `CameraPicker` in
+  SystemSheets.swift): one shot, no editing step, and the photo
+  becomes a one-page PDF through the exact letter-box assembly
+  scans use (`LibraryStore.importImages` → `importScan`), named
+  "Photo yyyy-MM-dd HH:mm", landing on the same post-import OCR
+  offer as scans and photo picks. More pages are a merge away —
+  there is deliberately no multi-shot flow; multi-page,
+  straightened captures are the document scanner's job, and a
+  camera photo gets NO edge detection or perspective correction.
+  Edges, handled in `LibraryView.photoTapped` (mirroring
+  `scanTapped`): no camera (`CameraPicker.isAvailable` false) →
+  plain alert pointing at Files / Photos to PDF; camera
+  permission denied or restricted → alert with an Open Settings
+  shortcut (the build-2 `NSCameraUsageDescription` already covers
+  this use — no new string); cancel → the picker delegate
+  delivers nil and nothing is created.
+- **Key Points…** (reader's PDF Tools sheet, with the same
+  From/To page-range steppers as Split/Export) — smart
+  highlights + essentials, **fully on-device: no network, no
+  external AI service, no model**. The engine is `KeyPoints.swift`:
+  - *Text first.* Sentences come from each page's text layer; a
+    page with no usable text (≤20 characters, the OCR engine's
+    bar) is run through the existing OCR engine first, and the
+    analysis runs on the searchable result — so a highlighted
+    copy of a scan is itself searchable.
+  - *Scoring (extractive, deterministic).* Sentences are split
+    with `NLTokenizer` (`.sentence`) over the page's own text,
+    so each sentence keeps its character range in that text.
+    Score = log-dampened, length-normalized term frequency of
+    the sentence's content words (stopwords removed), plus flat
+    boosts: first sentence of the page, any figure, a money
+    amount or percentage (patterns), a date (`NSDataDetector`),
+    and a named person/place/organization (`NLTagger`
+    `.nameType`). Frequency sums run in each sentence's own word
+    order, never dictionary order — the same document always
+    produces the same key points.
+  - *Selection.* Per page: roughly the top 30% of sentences by
+    score, at least one per page that has any. Sentences under
+    four words are excluded unless a page has nothing longer.
+  - *Output A — "Highlight Key Points in a Copy":* a new library
+    document (the whole document, not just the range) with real
+    yellow highlight annotations (`userName = "PVKeyPoint"`)
+    over each key sentence at its text bounds — located with
+    `PDFPage.selection(for:)` on the sentence's range and split
+    by line, the same placement the reader's manual highlight
+    uses. A sentence whose bounds can't be located is skipped,
+    never approximated.
+  - *Output B — "Essentials Only PDF":* a clean, newly typeset
+    letter-size PDF (TextKit pagination): title line "Key
+    Points — <doc name>", the explanation below, then per source
+    page a "Page N" heading and its key sentences as bullets.
+    This is the "filler thrown out" output.
+  - *Honest labeling* (tools-sheet footer, the Essentials PDF
+    itself, and here): "Key Points picks the sentences that
+    look most important using on-device analysis — figures,
+    dates, and names get priority. It doesn't rewrite anything;
+    the Essentials PDF quotes the original words." It is
+    scoring, not understanding: it can miss a quiet but crucial
+    sentence and promote a number-heavy aside. Nothing about it
+    is presented as AI summarization, because it isn't one.
 
 ## Editing specifics & honest limitations
 
@@ -453,3 +529,15 @@ the product is missing.
   tools (OCR / compress / redact rebuild pages upright in
   media-box space — check a rotated page before trusting it);
   PNG export landing in Photos via Save Image.
+- Device-only checks for build 4 (Take Photo + Key Points): the
+  camera flow end to end (first-use permission prompt, one shot →
+  one-page PDF in the library, the post-import OCR offer; cancel
+  creating nothing; denied permission showing the Settings
+  shortcut); Key Points quality on a real document — run it on a
+  contract, a statement, and a news-style article: the highlighted
+  copy's yellow marks must sit exactly on the picked sentences
+  (including on an OCR'd scan, where the copy should also be
+  searchable), and the Essentials PDF should read as the
+  document's facts with the filler gone; a text-less range
+  (blank/picture pages) should end in the plain "no readable
+  text" message, not a crash or an empty file.
