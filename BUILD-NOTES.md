@@ -470,6 +470,28 @@ the product is missing.
   when ASC finishes processing. Still owed before submission: the
   live ASC description needs the SCAN bullet plus the seven
   build-3 bullets (noted in app-store-listing.md).
+- **Build 4 — Take Photo + Key Points (2026-11-16):** owner asked
+  to "add where you take a picture" and for a feature that
+  "highlights the important information out of a page and throws
+  out the filler stuff." Added `CameraPicker` (SystemSheets) +
+  the library's Take Photo action, and `KeyPoints.swift` + the
+  tools sheet's Key Points section (see the Take Photo & Key
+  Points section above): regular-camera one-shot → one-page PDF,
+  and on-device extractive Key Points with Highlight-in-a-Copy
+  and Essentials Only PDF outputs. Build number bumped the
+  project way: `CFBundleVersion` 3 → 4 in Info.plist and
+  `CURRENT_PROJECT_VERSION = 4` in both target configurations;
+  version stays 1.0. Checker grew to **196/196**. Pushed as
+  commit `1824ea29`. Codemagic `ios-workflow` build
+  **`6afb96ba7fcc26ab724a32d9`** finished with **every step
+  successful on the first attempt** (no compile fixes needed);
+  the artefact is IPA **1.0 (4)** and the Publishing step
+  succeeded — the same upload pattern as builds 1–3, so build 4
+  reaches the Internal Testers group (automatic distribution)
+  when ASC finishes processing. Still owed before submission:
+  the live ASC description needs the SCAN bullet, the seven
+  build-3 bullets, and now the two build-4 bullets (TAKE A
+  PHOTO, KEY POINTS) — noted in app-store-listing.md.
 - **Browser-bound — could NOT be done via API (2026-11-16):** the ASC
   API needs the team Issuer ID to mint a JWT; it is **not stored
   anywhere on this VM** (re-verified this run: secrets dir holds only
