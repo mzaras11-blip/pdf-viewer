@@ -43,8 +43,10 @@ struct PencilCanvas: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: PKCanvasView, context: Context) {
-        (uiView.tool as? PKInkingTool)?.color = color
-        if (uiView.tool as? PKInkingTool)?.width != width {
+        // PKInkingTool is a value type: rebuild it when color/width change
+        // rather than mutating a cast copy.
+        if let tool = uiView.tool as? PKInkingTool,
+           tool.color != color || tool.width != width {
             uiView.tool = PKInkingTool(.pen, color: color, width: width)
         }
     }
