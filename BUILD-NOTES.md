@@ -159,10 +159,17 @@ the product is missing.
 - **Codemagic:** app registered via API — app ID `6afb39047f6c11bd3902822e`
   ("pdf-viewer", settingsSource: file, codemagic.yaml picked up).
   `CERTIFICATE_PRIVATE_KEY` set in group `certificate_credentials` from
-  `cert_private_key_v2.pem` (if the signed build rejects the cert, swap to
-  `cert_private_key.pem` and rebuild). First compile = `ios-unsigned`
-  workflow, build `6afb392cb72d83c1457c74eb` (build index 2; an identical
-  build #1 was queued by the helper's first POST — same commit 7e31a4ac).
+  `cert_private_key_v2.pem` (per MEMORY, v2 is the live key; v1 is
+  superseded). **FIRST REAL COMPILE PASSED 2026-11-16**: `ios-unsigned`
+  build `6afb5617e76223ec282af8a2` finished with every step successful.
+  Compile fixes it took (each found from the build log, one or two
+  errors at a time): (1) AdManager read the MainActor-isolated
+  `StoreManager.removeAdsOwned` from non-isolated contexts → StoreManager
+  now mirrors ownership into a `nonisolated(unsafe)` static snapshot
+  (`removeAdsOwnedSnapshot`); (2) DrawingViews tried to mutate a
+  PKInkingTool cast copy (value type) → rebuild the tool on change;
+  (3) ReaderController built ink paths as CGMutablePath → UIBezierPath,
+  and `PDFAnnotation.paths` needed optional unwrapping.
 - **Pages (live):** landing https://mzaras11-blip.github.io/pdf-viewer/ ·
   support https://mzaras11-blip.github.io/pdf-viewer/support.html ·
   privacy https://mzaras11-blip.github.io/pdf-viewer/privacy.html
