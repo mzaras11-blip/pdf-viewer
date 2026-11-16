@@ -58,6 +58,10 @@ check(info.get("ITSAppUsesNonExemptEncryption") is False, "ITSAppUsesNonExemptEn
 check(len(info.get("SKAdNetworkItems", [])) == 50, "SKAdNetworkItems has 50 entries (Santa parity)",
       f"got {len(info.get('SKAdNetworkItems', []))}")
 check("NSUserTrackingUsageDescription" in info, "ATT usage string present")
+check(info.get("NSCameraUsageDescription")
+      == "PDF Viewer & Editor uses the camera to scan documents into PDFs.",
+      "NSCameraUsageDescription carries the scanner purpose string")
+check(info.get("CFBundleVersion") == "2", "CFBundleVersion is 2 (build 2)")
 doc_types = info.get("CFBundleDocumentTypes", [])
 check(any("com.adobe.pdf" in dt.get("LSItemContentTypes", []) for dt in doc_types),
       "PDF document type registered for Open in…")
@@ -130,6 +134,8 @@ check(pbx.count("IPHONEOS_DEPLOYMENT_TARGET = 17.0;") == 2,
       "deployment target 17.0 in Debug+Release")
 check(pbx.count("INFOPLIST_FILE = PDFViewer/Info.plist;") == 2,
       "INFOPLIST_FILE path in Debug+Release")
+check(pbx.count("CURRENT_PROJECT_VERSION = 2;") == 2,
+      "CURRENT_PROJECT_VERSION = 2 in Debug+Release (build 2)")
 check("swift-package-manager-google-mobile-ads" in pbx, "Google Mobile Ads SPM package referenced")
 check("minimumVersion = 11.0.0" in pbx, "SPM version rule matches Santa (11.0.0 upToNextMajor)")
 
@@ -189,12 +195,14 @@ expected_imports = {
     "PDFViewerApp.swift": ["import SwiftUI"],
     "AdManager.swift": ["import SwiftUI", "import AppTrackingTransparency", "GoogleMobileAds"],
     "StoreManager.swift": ["import StoreKit"],
-    "LibraryStore.swift": ["import PDFKit"],
+    "LibraryStore.swift": ["import PDFKit", "import UIKit"],
     "ReaderController.swift": ["import PDFKit", "import UIKit"],
     "PDFKitView.swift": ["import PDFKit", "UIViewRepresentable"],
     "DrawingViews.swift": ["import PencilKit", "import PDFKit"],
     "ThumbnailsView.swift": ["import PDFKit"],
     "SystemSheets.swift": ["import UniformTypeIdentifiers"],
+    "ScannerView.swift": ["import VisionKit", "VNDocumentCameraViewController"],
+    "LibraryView.swift": ["import AVFoundation", "DocumentScanner"],
 }
 for name, needles in expected_imports.items():
     for needle in needles:
@@ -211,6 +219,7 @@ definitions = {
     "AdMobIDs": "ADMOB-IDS.swift",
     "ReadingBackground": "PDFKitView.swift",
     "SignatureStore": "DrawingViews.swift",
+    "DocumentScanner": "ScannerView.swift",
 }
 for type_name, defining_file in definitions.items():
     pattern = rf"(?:final class|class|struct|enum)\s+{type_name}\b"
@@ -225,6 +234,7 @@ uses = [
     ("ReaderController", "ThumbnailsView.swift"), ("ReaderController", "SearchView.swift"),
     ("LibraryStore", "ReaderView.swift"), ("LibraryStore", "LibraryView.swift"),
     ("SignatureStore", "ReaderView.swift"), ("ReadingBackground", "SettingsView.swift"),
+    ("DocumentScanner", "LibraryView.swift"),
 ]
 for type_name, using_file in uses:
     check(re.search(rf"\b{type_name}\b", swift_texts[using_file]) is not None,
@@ -234,6 +244,12 @@ check("com.swishgame.pdfviewer.remove_ads" in swift_texts["StoreManager.swift"],
       "Remove Ads product ID in StoreManager")
 check("interstitialInterval: TimeInterval = 300" in swift_texts["AdManager.swift"],
       "interstitial interval is 300s (owner's ~5 minutes)")
+check("func importScan(images:" in swift_texts["LibraryStore.swift"],
+      "LibraryStore.importScan assembles scanned pages into a library PDF")
+check("importScan(images:" in swift_texts["LibraryView.swift"],
+      "LibraryView routes finished scans into LibraryStore.importScan")
+check("VNDocumentCameraViewControllerDelegate" in swift_texts["ScannerView.swift"],
+      "ScannerView coordinator is the document camera delegate")
 
 print("== AdMob IDs (real, swapped in 2026-11-16) ==")
 adm = swift_texts["ADMOB-IDS.swift"]

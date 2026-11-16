@@ -15,7 +15,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -39,6 +39,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>PDF Viewer &amp; Editor uses the camera to scan documents into PDFs.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>We use your device's advertising identifier to show you ads that are more relevant to you. If you choose not to allow tracking, you'll still see ads — they just won't be personalized. Remove Ads in Settings turns ads off completely.</string>
 	<key>UILaunchScreen</key>

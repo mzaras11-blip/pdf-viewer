@@ -42,6 +42,10 @@ PDFViewer/
   SettingsView.swift            Remove Ads / restore, reading background,
                                 about
   SystemSheets.swift            UIDocumentPicker + share sheet wrappers
+  ScannerView.swift             VisionKit document camera wrapper
+                                (VNDocumentCameraViewController); the
+                                scan-to-PDF assembly is
+                                LibraryStore.importScan
   Info.plist                    display name, GADApplicationIdentifier
                                 (real AdMob app ID), ATT string, SKAdNetwork
                                 list (same 50 as Santa), document type
@@ -68,6 +72,40 @@ tools/check_project.py          structural verification (see below)
   persists form-field values.
 - Form fields need no special code: PDFView edits widget annotations
   natively; values persist on save.
+
+## Scanning (added in build 2, 2026-11-16)
+
+Owner request: "Can you incorporate a scanning function." The library
+gained a **Scan Document** action — first item in the "+" menu, and
+the prominent button on the empty-library screen (Open PDF moved to
+the secondary style there).
+
+- The scanner itself is Apple's stock **VisionKit document camera**
+  (`VNDocumentCameraViewController`, wrapped by `ScannerView.swift`) —
+  the same UI as the Notes app: automatic edge detection, perspective
+  correction, multi-page capture, color/grayscale/B&W filters, flash.
+  We add no capture UI of our own; capture quality is Apple's.
+- On save, `LibraryStore.importScan` assembles the page images into
+  one PDF in Documents/Imports and registers it like any import — it
+  appears in recents, opens in the reader, and annotate / sign /
+  merge / reorder / share all work on it. Each page keeps the image's
+  aspect ratio fitted inside a US Letter box (612×792 pt); images are
+  capped at a 2048-pt long edge so multi-page scans stay a sane size.
+- Default name: **"Scan yyyy-MM-dd HH:mm"** (e.g. "Scan 2026-11-16
+  17:45"). The app has no rename mechanism for any document, so scans
+  don't get one either.
+- Edges, handled in `LibraryView.scanTapped` / the scanner delegate:
+  camera permission previously denied or restricted → plain alert
+  explaining, with an "Open Settings" shortcut; scanner unsupported
+  (no camera / Simulator — `VNDocumentCameraViewController.isSupported`
+  is false) → alert explaining, Files import still offered; user
+  cancels → back to the library, nothing created; a zero-page finish
+  creates nothing; a scanner error surfaces its own message.
+- Permission string (`Info.plist` → `NSCameraUsageDescription`):
+  "PDF Viewer & Editor uses the camera to scan documents into PDFs."
+  Scanned images never leave the device (same document model as
+  imports). No PrivacyInfo change: camera use is not a required-reason
+  API, and no data is collected from scans.
 
 ## Editing specifics & honest limitations
 
@@ -237,3 +275,9 @@ the product is missing.
   burn-in on rotated pages, form-field saving, the interstitial's
   5-minute timing + page restoration, ATT prompt ordering, and the
   Remove Ads purchase/restore round-trip.
+- Device-only checks for build 2 (scanner): the document camera is
+  Apple's stock component and cannot run in the Simulator — verify on
+  the owner's iPhone: scan capture quality and edge detection, the
+  multi-page flow, the permission prompt on first use and the
+  denied-permission alert + Settings shortcut, cancel creating no
+  document, and a saved scan opening/annotating like any import.

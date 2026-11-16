@@ -1,18 +1,23 @@
+import AVFoundation
 import SwiftUI
+import UIKit
 
 /// The home screen: the reader's library. Recents sorted by last
-/// opened, favorites pinned by a star, plus the three ways in —
-/// open from Files, merge several PDFs into one, and Settings.
+/// opened, favorites pinned by a star, plus the ways in — open from
+/// Files, scan paper with the document camera, merge several PDFs
+/// into one, and Settings.
 struct LibraryView: View {
     @EnvironmentObject private var library: LibraryStore
 
     @State private var showingPicker = false
     @State private var showingMergePicker = false
     @State private var showingSettings = false
+    @State private var showingScanner = false
+    @State private var scanNotice: ScanNotice?
     @State private var mergeSelection: Set<UUID> = []
     @State private var mergeMode = false
     @State private var importError: String?
-    @State private var openAfterMerge: RecentDocument?
+    @State private var autoOpen: RecentDocument?
 
     var body: some View {
         Group {
@@ -34,6 +39,11 @@ struct LibraryView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button {
+                        scanTapped()
+                    } label: {
+                        Label("Scan Document", systemImage: "doc.viewfinder")
+                    }
                     Button {
                         showingPicker = true
                     } label: {
@@ -59,6 +69,37 @@ struct LibraryView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView()
         }
+        .fullScreenCover(isPresented: $showingScanner) {
+            DocumentScanner { images in
+                finishScan(images)
+            } onCancel: {
+                // Back to the library; no document is created.
+            } onError: { error in
+                scanNotice = ScanNotice(
+                    title: "Scanning Didn't Work",
+                    message: error.localizedDescription,
+                    offerSettings: false)
+            }
+            .ignoresSafeArea()
+        }
+        .alert(scanNotice?.title ?? "", isPresented: Binding(
+            get: { scanNotice != nil },
+            set: { if !$0 { scanNotice = nil } }
+        )) {
+            if scanNotice?.offerSettings == true {
+                Button("Open Settings") {
+                    scanNotice = nil
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+                Button("Not Now", role: .cancel) { scanNotice = nil }
+            } else {
+                Button("OK", role: .cancel) { scanNotice = nil }
+            }
+        } message: {
+            Text(scanNotice?.message ?? "")
+        }
         .alert("Couldn't Open That File", isPresented: Binding(
             get: { importError != nil },
             set: { if !$0 { importError = nil } }
@@ -67,7 +108,7 @@ struct LibraryView: View {
         } message: {
             Text(importError ?? "")
         }
-        .navigationDestination(item: $openAfterMerge) { entry in
+        .navigationDestination(item: $autoOpen) { entry in
             ReaderView(entry: entry, library: library)
         }
     }
@@ -80,8 +121,10 @@ struct LibraryView: View {
         } description: {
             Text("Open a PDF from Files or iCloud Drive and it will live here, ready to read and edit.")
         } actions: {
-            Button("Open PDF…") { showingPicker = true }
+            Button("Scan Document") { scanTapped() }
                 .buttonStyle(.borderedProminent)
+            Button("Open PDF…") { showingPicker = true }
+                .buttonStyle(.bordered)
         }
     }
 
@@ -199,6 +242,60 @@ struct LibraryView: View {
         }
         mergeMode = false
         mergeSelection = []
-        openAfterMerge = merged
+        autoOpen = merged
     }
+
+    // MARK: - Scanning
+
+    /// The Scan action: explains itself instead of dead-ending when
+    /// the hardware can't scan or camera access is off, and otherwise
+    /// presents Apple's document camera.
+    private func scanTapped() {
+        guard DocumentScanner.isSupported else {
+            scanNotice = ScanNotice(
+                title: "Scanning Isn't Available",
+                message: "The document scanner needs a camera, so it isn't available on this device. You can still open PDFs from Files.",
+                offerSettings: false)
+            return
+        }
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted:
+            scanNotice = ScanNotice(
+                title: "Camera Access Is Off",
+                message: "PDF Viewer & Editor needs the camera to scan documents. Turn on Camera for the app in Settings, then try again.",
+                offerSettings: true)
+        default:
+            showingScanner = true
+        }
+    }
+
+    /// A finished scan becomes a library document and opens straight
+    /// into the reader, like a merge does. An empty scan (no pages)
+    /// creates nothing.
+    private func finishScan(_ images: [UIImage]) {
+        guard !images.isEmpty else { return }
+        if let entry = library.importScan(images: images, name: Self.scanName()) {
+            autoOpen = entry
+        } else {
+            importError = "That scan couldn't be saved as a PDF."
+        }
+    }
+
+    /// Default name for a scanned document, e.g. "Scan 2026-11-16 17:45".
+    private static func scanName() -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return "Scan " + formatter.string(from: Date())
+    }
+}
+
+/// A short message about scanning — unavailable hardware, camera
+/// permission off, or a scanner error — optionally with a shortcut
+/// to the app's page in Settings.
+private struct ScanNotice: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let offerSettings: Bool
 }

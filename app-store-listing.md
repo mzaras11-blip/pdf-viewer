@@ -3,7 +3,7 @@
 - **Name:** PDF Viewer & Editor
 - **Subtitle:** Read, Annotate & Sign PDFs
 - **Bundle ID:** com.swishgame.pdfviewer
-- **Version:** 1.0 (build 1)
+- **Version:** 1.0 (build 2)
 - **Primary category:** Utilities
 - **Secondary category:** Productivity
 
@@ -21,6 +21,7 @@ When a document needs more than reading, the editor is right there:
 
 FEATURES
 • READ — smooth native rendering, pinch zoom, page indicator, bookmarks, favorites, and a recents library that remembers your place
+• SCAN — point the camera at paper and get a clean PDF: automatic edge detection and perspective correction, multi-page scans saved straight into your library
 • SEARCH — full-text search with a results list that jumps straight to each match
 • HIGHLIGHT & UNDERLINE — mark up text in four colors
 • DRAW — freehand ink in your choice of color and pen width, saved right into the document
@@ -42,6 +43,9 @@ PDF Viewer & Editor is an original, independent app. It is not affiliated with A
 pdf,viewer,editor,annotate,sign,signature,fill form,highlight,merge,scanner,documents,read
 
 ## Support / Marketing Notes
+
+- Listing sync (2026-11-16): scanning shipped in build 2, after the live App Store Connect description was written — the ASC description does NOT have the SCAN bullet above yet. Add that one line to the live ASC description before submitting (browser step; not done from the build pipeline).
+
 
 - Support URL: https://mzaras11-blip.github.io/pdf-viewer/support.html
 - Privacy Policy URL: https://mzaras11-blip.github.io/pdf-viewer/privacy.html

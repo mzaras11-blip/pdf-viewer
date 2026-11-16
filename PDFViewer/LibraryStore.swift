@@ -1,5 +1,6 @@
 import Foundation
 import PDFKit
+import UIKit
 
 /// One PDF in the app's library. The file itself lives in the app's
 /// own Documents/Imports folder (imported as a copy), so the original
@@ -213,6 +214,79 @@ final class LibraryStore: ObservableObject {
         recents.insert(entry, at: 0)
         save()
         return entry
+    }
+
+    // MARK: - Scan
+
+    /// Assembles scanned page images (from the document camera) into
+    /// one PDF and registers it in the library, exactly like an
+    /// imported file: the PDF lives in Documents/Imports under its
+    /// own copy, appears in recents, and every reader/editor feature
+    /// works on it. Each page keeps the image's own aspect ratio,
+    /// fitted inside a US Letter page (612 x 792 pt), so a portrait
+    /// sheet of paper becomes a near-letter portrait PDF page.
+    /// Returns the new entry, or nil if the PDF couldn't be written.
+    @discardableResult
+    func importScan(images: [UIImage], name: String) -> RecentDocument? {
+        guard !images.isEmpty else { return nil }
+
+        let id = UUID()
+        let fileName = "\(id.uuidString).pdf"
+        let destination = importsDirectory.appendingPathComponent(fileName)
+
+        UIGraphicsBeginPDFContextToFile(destination.path, .zero, nil)
+        for image in images {
+            let prepared = Self.downscaled(image, maxDimension: 2048)
+            let pageRect = Self.scanPageRect(for: prepared.size)
+            UIGraphicsBeginPDFPageWithInfo(pageRect, nil)
+            prepared.draw(in: pageRect)
+        }
+        UIGraphicsEndPDFContext()
+
+        guard let written = PDFDocument(url: destination), written.pageCount > 0 else {
+            try? FileManager.default.removeItem(at: destination)
+            return nil
+        }
+
+        let entry = RecentDocument(
+            id: id,
+            name: name,
+            fileName: fileName,
+            addedAt: Date(),
+            lastOpenedAt: Date(),
+            lastPage: 0,
+            isFavorite: false,
+            pageCount: written.pageCount
+        )
+        recents.insert(entry, at: 0)
+        save()
+        return entry
+    }
+
+    /// The page size for one scanned image: the image's aspect ratio
+    /// fitted inside a US Letter box.
+    private static func scanPageRect(for imageSize: CGSize) -> CGRect {
+        let letter = CGSize(width: 612, height: 792)
+        guard imageSize.width > 0, imageSize.height > 0 else {
+            return CGRect(origin: .zero, size: letter)
+        }
+        let scale = min(letter.width / imageSize.width, letter.height / imageSize.height)
+        let size = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        return CGRect(origin: .zero, size: size)
+    }
+
+    /// Caps a scan image's long edge so multi-page scans stay a
+    /// sensible file size; smaller images pass through untouched.
+    private static func downscaled(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let longest = max(image.size.width, image.size.height)
+        guard longest > maxDimension else { return image }
+        let factor = maxDimension / longest
+        let target = CGSize(width: image.size.width * factor, height: image.size.height * factor)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
     }
 
     // MARK: - Persistence
