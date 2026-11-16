@@ -234,6 +234,33 @@ the product is missing.
   in TestFlight (internal testing unaffected); external submission
   just needs that test-info form filled:
   https://appstoreconnect.apple.com/apps/6835581432/testflight/test-info
+- **Build 2 — document scanning (2026-11-16):** owner asked for a
+  scanning function the same day build 1 shipped. Added
+  `ScannerView.swift` (VisionKit document camera),
+  `LibraryStore.importScan`, the library's Scan Document action with
+  camera-permission handling, and `NSCameraUsageDescription` (see the
+  Scanning section above). Build number bumped the project way:
+  `CFBundleVersion` 1 → 2 in Info.plist and
+  `CURRENT_PROJECT_VERSION = 2` in both target configurations;
+  version stays 1.0. Checker grew to **110/110**. Pushed as commit
+  `dfe298e4`; Codemagic `ios-workflow` build
+  **`6afb88710400a7fc1a820a1e`** finished with **every step
+  successful**; the artefact is IPA **1.0 (2)** and the build log
+  ends "UPLOAD SUCCEEDED with no errors … Following submissions will
+  start shortly after App Store Connect completes processing of
+  uploaded artifacts: TestFlight." Codemagic's async ASC
+  distribution task shows "failed" — **the identical outcome as
+  build 1**, whose build is verified present in TestFlight
+  (processed, in the Internal Testers group, "Ready to Test"); for
+  build 1 that task's failure was only the external beta-review
+  submission sub-step, not the upload. The Internal Testers group
+  has automatic distribution enabled, so build 2 joins it when ASC
+  finishes processing the upload — no extra ASC work needed for the
+  owner to get it. (Direct ASC read-back isn't possible from this
+  VM — no Issuer ID, see below — so build 2's processed state rests
+  on the upload log + the build-1 pattern, not an ASC screenshot.)
+  Also still owed before submission: the live ASC description needs
+  the SCAN bullet added (noted in app-store-listing.md).
 - **Browser-bound — could NOT be done via API (2026-11-16):** the ASC
   API needs the team Issuer ID to mint a JWT; it is **not stored
   anywhere on this VM** (re-verified this run: secrets dir holds only
