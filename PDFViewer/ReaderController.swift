@@ -204,7 +204,7 @@ final class ReaderController: ObservableObject {
         for point in viewPoints {
             pagePoints.append(pdfView.convert(point, to: page))
         }
-        let path = CGMutablePath()
+        let path = UIBezierPath()
         path.move(to: pagePoints[0])
         for point in pagePoints.dropFirst() { path.addLine(to: point) }
 
@@ -288,8 +288,8 @@ final class ReaderController: ObservableObject {
             newBorder.lineWidth = border.lineWidth
             copy.border = newBorder
         }
-        if type == PDFAnnotationSubtype.ink.rawValue {
-            for path in source.paths { copy.add(path) }
+        if type == PDFAnnotationSubtype.ink.rawValue, let paths = source.paths {
+            for path in paths { copy.add(path) }
         }
         return copy
     }
