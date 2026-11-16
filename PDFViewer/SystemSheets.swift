@@ -82,7 +82,7 @@ struct PhotoPicker: UIViewControllerRepresentable {
                 }
             }
             group.notify(queue: .main) {
-                parent.onPick(images.compactMap { $0 })
+                self.parent.onPick(images.compactMap { $0 })
             }
         }
     }
