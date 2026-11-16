@@ -3,7 +3,7 @@
 - **Name:** PDF Viewer & Editor
 - **Subtitle:** Read, Annotate & Sign PDFs
 - **Bundle ID:** com.swishgame.pdfviewer
-- **Version:** 1.0 (build 2)
+- **Version:** 1.0 (build 3)
 - **Primary category:** Utilities
 - **Secondary category:** Productivity
 
@@ -28,6 +28,13 @@ FEATURES
 • TEXT BOXES & STICKY NOTES — add your own words anywhere on the page
 • FILL FORMS — tap and type into real PDF form fields, then save
 • SIGN — draw your signature once, save it, and stamp it onto any page, positioned exactly where you want it
+• OCR — make scans and image-only PDFs searchable: on-device text recognition adds an invisible text layer, so search, selection, and copy just work
+• COMPRESS — shrink a PDF for email at screen, balanced, or print quality, with the before and after sizes shown up front
+• SPLIT — pull any page range out as its own new PDF
+• CONVERT — turn photos into a PDF, or export pages as PNG images to Photos and anywhere else
+• PASSWORD — add an open password to a copy, or save an unlocked copy of a document whose password you know
+• REDACT — black out sensitive text for good: applied redactions are burned into the page, so the words are removed, not just covered
+• COVER & REPLACE TEXT — cover a word or a line with a patch matched to the page and type the replacement over it
 • MANAGE PAGES — reorder pages by dragging thumbnails, rotate, or delete pages
 • MERGE — combine two or more PDFs into one new document
 • SHARE — export your edited PDF anywhere with the standard share sheet. Your original files are never changed: the app always works on its own imported copy
@@ -40,11 +47,11 @@ PDF Viewer & Editor is an original, independent app. It is not affiliated with A
 
 ## Keywords
 
-pdf,viewer,editor,annotate,sign,signature,fill form,highlight,merge,scanner,documents,read
+pdf,viewer,editor,ocr,scan,sign,annotate,merge,compress,redact,split,form,highlight,read
 
 ## Support / Marketing Notes
 
-- Listing sync (2026-11-16): scanning shipped in build 2, after the live App Store Connect description was written — the ASC description does NOT have the SCAN bullet above yet. Add that one line to the live ASC description before submitting (browser step; not done from the build pipeline).
+- Listing sync (2026-11-16): scanning shipped in build 2 and the pro tools (OCR, COMPRESS, SPLIT, CONVERT, PASSWORD, REDACT, COVER & REPLACE TEXT) in build 3, after the live App Store Connect description was written — the ASC description does NOT have the SCAN bullet or the seven build-3 bullets above yet. Add those lines to the live ASC description before submitting (browser step; not done from the build pipeline).
 
 
 - Support URL: https://mzaras11-blip.github.io/pdf-viewer/support.html

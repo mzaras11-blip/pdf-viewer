@@ -14,6 +14,8 @@ enum ReaderTool: Equatable {
     case note
     case sign
     case erase
+    case redact
+    case coverText
 }
 
 /// One row of the outline sidebar.
@@ -292,6 +294,98 @@ final class ReaderController: ObservableObject {
             for path in paths { copy.add(path) }
         }
         return copy
+    }
+
+    // MARK: - Password unlock
+
+    /// Tries to unlock a password-protected document for reading.
+    /// Unlocking is in-memory only — the library file keeps its
+    /// password; saving an unlocked copy is a separate tools action.
+    @discardableResult
+    func unlock(password: String) -> Bool {
+        guard document.isLocked else { return true }
+        guard document.unlock(withPassword: password) else { return false }
+        objectWillChange.send()
+        pdfView?.document = document
+        return true
+    }
+
+    // MARK: - Redaction (pending boxes, burned in on apply)
+
+    /// Redaction boxes the reader has drawn but not yet applied,
+    /// keyed by page index. They live only in memory — nothing is
+    /// written to the file until applyRedactions burns them in.
+    @Published private(set) var pendingRedactions: [Int: [CGRect]] = [:]
+
+    var pendingRedactionCount: Int {
+        pendingRedactions.values.reduce(0) { $0 + $1.count }
+    }
+
+    func redactions(on pageIndex: Int) -> [CGRect] {
+        pendingRedactions[pageIndex] ?? []
+    }
+
+    func addRedactionBox(_ rect: CGRect, pageIndex: Int) {
+        pendingRedactions[pageIndex, default: []].append(rect)
+    }
+
+    func clearRedactions() {
+        pendingRedactions = [:]
+    }
+
+    /// Burns every pending box into its page (PDFTools.redactedPage:
+    /// the page is rasterized at print quality with the boxes
+    /// painted black, so the covered text is removed from the file,
+    /// not just hidden). Writes the document immediately.
+    @discardableResult
+    func applyRedactions() -> Bool {
+        guard !pendingRedactions.isEmpty else { return false }
+        var applied = false
+        for (index, boxes) in pendingRedactions {
+            guard let page = document.page(at: index),
+                  let newPage = PDFTools.redactedPage(from: page, boxes: boxes)
+            else { continue }
+            document.removePage(at: index)
+            document.insert(newPage, at: index)
+            applied = true
+        }
+        guard applied else { return false }
+        pendingRedactions = [:]
+        refreshAfterStructureChange(keepingPage: currentPageIndex)
+        markDirty()
+        persistEdits()
+        return true
+    }
+
+    // MARK: - Cover & retype (whiteout)
+
+    /// "Edits" text the practical way: paints a patch in the page's
+    /// own background color over the dragged rectangle, then puts a
+    /// text box with the replacement words on top. Both halves are
+    /// ordinary annotations committed on save, and both can be
+    /// removed with the eraser. This is a cover-up, NOT a redaction:
+    /// the original words stay in the file underneath the patch —
+    /// use Redact for anything sensitive.
+    func coverAndRetype(text: String, rect: CGRect, on page: PDFPage) {
+        let background = PDFTools.sampleBackgroundColor(page: page, rect: rect)
+        let cover = PDFAnnotation(bounds: rect, forType: .square, withProperties: nil)
+        cover.color = background
+        cover.interiorColor = background
+        let border = PDFBorder()
+        border.lineWidth = 0
+        cover.border = border
+        cover.userName = "PVCover"
+        page.addAnnotation(cover)
+
+        let fontSize = min(max(rect.height * 0.7, 9), 40)
+        let replacement = PDFAnnotation(bounds: rect, forType: .freeText, withProperties: nil)
+        replacement.contents = text
+        replacement.font = UIFont.systemFont(ofSize: fontSize)
+        replacement.fontColor = .black
+        replacement.color = .clear
+        replacement.userName = "PVText"
+        page.addAnnotation(replacement)
+        markDirty()
     }
 
     // MARK: - Page operations

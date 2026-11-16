@@ -13,11 +13,18 @@ struct LibraryView: View {
     @State private var showingMergePicker = false
     @State private var showingSettings = false
     @State private var showingScanner = false
+    @State private var showingPhotoPicker = false
     @State private var scanNotice: ScanNotice?
     @State private var mergeSelection: Set<UUID> = []
     @State private var mergeMode = false
     @State private var importError: String?
     @State private var autoOpen: RecentDocument?
+    @State private var pendingOCREntry: RecentDocument?
+    @State private var showOCROffer = false
+    @State private var ocrSink: ProgressSink?
+    @State private var ocrRunning = false
+    @State private var ocrDone = 0
+    @State private var ocrTotal = 1
 
     var body: some View {
         Group {
@@ -50,6 +57,11 @@ struct LibraryView: View {
                         Label("Open PDF…", systemImage: "folder")
                     }
                     Button {
+                        showingPhotoPicker = true
+                    } label: {
+                        Label("Photos to PDF…", systemImage: "photo.on.rectangle")
+                    }
+                    Button {
                         mergeMode = true
                         mergeSelection = []
                     } label: {
@@ -65,6 +77,42 @@ struct LibraryView: View {
             DocumentPicker { urls in
                 importPicked(urls)
             }
+        }
+        .sheet(isPresented: $showingPhotoPicker) {
+            PhotoPicker { images in
+                finishPhotos(images)
+            }
+        }
+        .confirmationDialog("Saved to Your Library",
+                            isPresented: $showOCROffer,
+                            presenting: pendingOCREntry) { entry in
+            Button("Make Searchable (OCR)") {
+                runLibraryOCR(entry)
+            }
+            Button("Open It") {
+                autoOpen = entry
+            }
+            Button("Later", role: .cancel) {}
+        } message: { _ in
+            Text("This document is pictures of pages, so its words can't be searched or copied yet. Make Searchable (OCR) recognizes the text on this device and saves a searchable copy.")
+        }
+        .sheet(isPresented: $ocrRunning) {
+            NavigationStack {
+                VStack(spacing: 14) {
+                    ProgressView(value: Double(ocrDone), total: Double(max(ocrTotal, 1)))
+                    Text("Recognizing text — page \(min(ocrDone + 1, max(ocrTotal, 1))) of \(max(ocrTotal, 1))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("Cancel", role: .destructive) {
+                        ocrSink?.cancel()
+                    }
+                }
+                .padding()
+                .navigationTitle("Make Searchable (OCR)")
+                .navigationBarTitleDisplayMode(.inline)
+            }
+            .presentationDetents([.medium])
+            .interactiveDismissDisabled()
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
@@ -269,24 +317,86 @@ struct LibraryView: View {
         }
     }
 
-    /// A finished scan becomes a library document and opens straight
-    /// into the reader, like a merge does. An empty scan (no pages)
-    /// creates nothing.
+    /// A finished scan becomes a library document, then offers OCR.
+    /// An empty scan (no pages) creates nothing.
     private func finishScan(_ images: [UIImage]) {
         guard !images.isEmpty else { return }
         if let entry = library.importScan(images: images, name: Self.scanName()) {
-            autoOpen = entry
+            offerOCR(for: entry)
         } else {
             importError = "That scan couldn't be saved as a PDF."
         }
     }
 
+    /// Picked photos become a library document (one image per page)
+    /// through the same offer-OCR landing as a scan.
+    private func finishPhotos(_ images: [UIImage]) {
+        guard !images.isEmpty else { return }
+        if let entry = library.importImages(images: images, name: Self.photoName()) {
+            offerOCR(for: entry)
+        } else {
+            importError = "Those photos couldn't be saved as a PDF."
+        }
+    }
+
+    /// Image-built PDFs are pictures of pages until a text layer is
+    /// added, so every scan / photos import lands here first.
+    private func offerOCR(for entry: RecentDocument) {
+        pendingOCREntry = entry
+        showOCROffer = true
+    }
+
+    /// Runs OCR on a just-imported image-built document, with
+    /// progress and cancellation. Success opens the searchable
+    /// copy; cancelling or failing opens the original document —
+    /// the import itself is never lost.
+    private func runLibraryOCR(_ entry: RecentDocument) {
+        guard let document = library.openDocument(entry) else {
+            autoOpen = entry
+            return
+        }
+        let sink = ProgressSink()
+        sink.onProgress = { done, total in
+            DispatchQueue.main.async {
+                ocrDone = done
+                ocrTotal = max(total, 1)
+            }
+        }
+        ocrSink = sink
+        ocrDone = 0
+        ocrTotal = document.pageCount
+        ocrRunning = true
+        Task {
+            let output = await Task.detached(priority: .userInitiated) {
+                PDFTools.ocrDocument(document, sink: sink)
+            }.value
+            ocrRunning = false
+            ocrSink = nil
+            if !sink.cancelled, let output,
+               let created = library.registerDocument(output,
+                                                      name: entry.name + " (Searchable)") {
+                autoOpen = created
+            } else {
+                autoOpen = entry
+            }
+        }
+    }
+
     /// Default name for a scanned document, e.g. "Scan 2026-11-16 17:45".
     private static func scanName() -> String {
+        "Scan " + Self.timestamp()
+    }
+
+    /// Default name for a photos-built document.
+    private static func photoName() -> String {
+        "Photos " + Self.timestamp()
+    }
+
+    private static func timestamp() -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return "Scan " + formatter.string(from: Date())
+        return formatter.string(from: Date())
     }
 }
 

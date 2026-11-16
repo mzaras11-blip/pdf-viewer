@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -33,6 +34,56 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             parent.dismiss()
+        }
+    }
+}
+
+/// The system photo picker, multi-select, for the Photos to PDF
+/// conversion. PHPicker needs no photo-library permission prompt;
+/// it hands back only the images the user picked. Images are
+/// delivered in pick order.
+struct PhotoPicker: UIViewControllerRepresentable {
+    var onPick: ([UIImage]) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .images
+        configuration.selectionLimit = 0
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        private let parent: PhotoPicker
+
+        init(_ parent: PhotoPicker) { self.parent = parent }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            parent.dismiss()
+            guard !results.isEmpty else {
+                parent.onPick([])
+                return
+            }
+            var images: [UIImage?] = Array(repeating: nil, count: results.count)
+            let group = DispatchGroup()
+            for (index, result) in results.enumerated() {
+                let provider = result.itemProvider
+                guard provider.canLoadObject(ofClass: UIImage.self) else { continue }
+                group.enter()
+                provider.loadObject(ofClass: UIImage.self) { object, _ in
+                    images[index] = object as? UIImage
+                    group.leave()
+                }
+            }
+            group.notify(queue: .main) {
+                parent.onPick(images.compactMap { $0 })
+            }
         }
     }
 }

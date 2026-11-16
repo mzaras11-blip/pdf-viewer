@@ -20,6 +20,8 @@
 		PV01B0000000000000000013 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000013 /* SettingsView.swift */; };
 		PV01B0000000000000000014 /* SystemSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000014 /* SystemSheets.swift */; };
 		PV01B0000000000000000015 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000015 /* ScannerView.swift */; };
+		PV01B0000000000000000016 /* PDFTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000016 /* PDFTools.swift */; };
+		PV01B0000000000000000017 /* DocumentToolsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000017 /* DocumentToolsView.swift */; };
 		PV01B0000000000000000091 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000091 /* Assets.xcassets */; };
 		PV01B0000000000000000092 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = PV01F0000000000000000092 /* PrivacyInfo.xcprivacy */; };
 		PV01F0000000000000000000 /* PDFViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PDFViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -38,6 +40,8 @@
 		PV01F0000000000000000013 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		PV01F0000000000000000014 /* SystemSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSheets.swift; sourceTree = "<group>"; };
 		PV01F0000000000000000015 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+		PV01F0000000000000000016 /* PDFTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFTools.swift; sourceTree = "<group>"; };
+		PV01F0000000000000000017 /* DocumentToolsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentToolsView.swift; sourceTree = "<group>"; };
 		PV01F0000000000000000091 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		PV01F0000000000000000092 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		PV01F0000000000000000090 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -60,6 +64,8 @@
 				PV01B0000000000000000013 /* SettingsView.swift in Sources */,
 				PV01B0000000000000000014 /* SystemSheets.swift in Sources */,
 				PV01B0000000000000000015 /* ScannerView.swift in Sources */,
+				PV01B0000000000000000016 /* PDFTools.swift in Sources */,
+				PV01B0000000000000000017 /* DocumentToolsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,6 +119,8 @@
 				PV01F0000000000000000013 /* SettingsView.swift */,
 				PV01F0000000000000000014 /* SystemSheets.swift */,
 				PV01F0000000000000000015 /* ScannerView.swift */,
+				PV01F0000000000000000016 /* PDFTools.swift */,
+				PV01F0000000000000000017 /* DocumentToolsView.swift */,
 				PV01F0000000000000000090 /* Info.plist */,
 				PV01F0000000000000000091 /* Assets.xcassets */,
 				PV01F0000000000000000092 /* PrivacyInfo.xcprivacy */,
@@ -233,7 +241,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = PDFViewer/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -255,7 +263,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = "";
 				INFOPLIST_FILE = PDFViewer/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

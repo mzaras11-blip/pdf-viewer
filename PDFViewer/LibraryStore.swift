@@ -216,6 +216,61 @@ final class LibraryStore: ObservableObject {
         return entry
     }
 
+    // MARK: - Tool outputs
+
+    /// Writes a document produced by one of the PDF tools (OCR,
+    /// compress, split, protect, unlock) into the library as a new
+    /// entry under the given display name. Write options are passed
+    /// through to PDFKit — the protect flow uses them to set the
+    /// open password. The written file is reopened and checked:
+    /// a protected copy must come back locked, an ordinary copy
+    /// must not. Returns the new entry, or nil if the write or the
+    /// verification failed.
+    @discardableResult
+    func registerDocument(_ document: PDFDocument, name: String,
+                          writeOptions: [PDFDocumentWriteOption: Any]? = nil) -> RecentDocument? {
+        guard document.pageCount > 0 else { return nil }
+        let id = UUID()
+        let fileName = "\(id.uuidString).pdf"
+        let destination = importsDirectory.appendingPathComponent(fileName)
+        let wrote: Bool
+        if let writeOptions {
+            wrote = document.write(to: destination, withOptions: writeOptions)
+        } else {
+            wrote = document.write(to: destination)
+        }
+        guard wrote, let check = PDFDocument(url: destination) else {
+            try? FileManager.default.removeItem(at: destination)
+            return nil
+        }
+        let expectLocked = writeOptions?[.userPasswordOption] != nil
+        guard check.isLocked == expectLocked else {
+            try? FileManager.default.removeItem(at: destination)
+            return nil
+        }
+        let entry = RecentDocument(
+            id: id,
+            name: name,
+            fileName: fileName,
+            addedAt: Date(),
+            lastOpenedAt: Date(),
+            lastPage: 0,
+            isFavorite: false,
+            pageCount: document.pageCount
+        )
+        recents.insert(entry, at: 0)
+        save()
+        return entry
+    }
+
+    /// Photos picked from the photo library become a PDF through
+    /// the exact same assembly path as a scan (one image per page,
+    /// fitted to a letter-size page box).
+    @discardableResult
+    func importImages(images: [UIImage], name: String) -> RecentDocument? {
+        importScan(images: images, name: name)
+    }
+
     // MARK: - Scan
 
     /// Assembles scanned page images (from the document camera) into

@@ -61,7 +61,10 @@ check("NSUserTrackingUsageDescription" in info, "ATT usage string present")
 check(info.get("NSCameraUsageDescription")
       == "PDF Viewer & Editor uses the camera to scan documents into PDFs.",
       "NSCameraUsageDescription carries the scanner purpose string")
-check(info.get("CFBundleVersion") == "2", "CFBundleVersion is 2 (build 2)")
+check(info.get("NSPhotoLibraryAddUsageDescription")
+      == "PDF Viewer & Editor saves exported page images to your photo library when you choose Save Image in the share sheet.",
+      "NSPhotoLibraryAddUsageDescription carries the export purpose string")
+check(info.get("CFBundleVersion") == "3", "CFBundleVersion is 3 (build 3)")
 doc_types = info.get("CFBundleDocumentTypes", [])
 check(any("com.adobe.pdf" in dt.get("LSItemContentTypes", []) for dt in doc_types),
       "PDF document type registered for Open in…")
@@ -134,8 +137,8 @@ check(pbx.count("IPHONEOS_DEPLOYMENT_TARGET = 17.0;") == 2,
       "deployment target 17.0 in Debug+Release")
 check(pbx.count("INFOPLIST_FILE = PDFViewer/Info.plist;") == 2,
       "INFOPLIST_FILE path in Debug+Release")
-check(pbx.count("CURRENT_PROJECT_VERSION = 2;") == 2,
-      "CURRENT_PROJECT_VERSION = 2 in Debug+Release (build 2)")
+check(pbx.count("CURRENT_PROJECT_VERSION = 3;") == 2,
+      "CURRENT_PROJECT_VERSION = 3 in Debug+Release (build 3)")
 check("swift-package-manager-google-mobile-ads" in pbx, "Google Mobile Ads SPM package referenced")
 check("minimumVersion = 11.0.0" in pbx, "SPM version rule matches Santa (11.0.0 upToNextMajor)")
 
@@ -196,13 +199,19 @@ expected_imports = {
     "AdManager.swift": ["import SwiftUI", "import AppTrackingTransparency", "GoogleMobileAds"],
     "StoreManager.swift": ["import StoreKit"],
     "LibraryStore.swift": ["import PDFKit", "import UIKit"],
-    "ReaderController.swift": ["import PDFKit", "import UIKit"],
     "PDFKitView.swift": ["import PDFKit", "UIViewRepresentable"],
     "DrawingViews.swift": ["import PencilKit", "import PDFKit"],
     "ThumbnailsView.swift": ["import PDFKit"],
-    "SystemSheets.swift": ["import UniformTypeIdentifiers"],
+    "SystemSheets.swift": ["import UniformTypeIdentifiers", "import PhotosUI",
+                           "PHPickerViewController"],
     "ScannerView.swift": ["import VisionKit", "VNDocumentCameraViewController"],
-    "LibraryView.swift": ["import AVFoundation", "DocumentScanner"],
+    "LibraryView.swift": ["import AVFoundation", "DocumentScanner", "PhotoPicker",
+                          "PDFTools"],
+    "PDFTools.swift": ["import PDFKit", "import Vision", "import CoreText",
+                       "VNRecognizeTextRequest"],
+    "DocumentToolsView.swift": ["import SwiftUI", "import PDFKit", "PDFTools"],
+    "ReaderController.swift": ["import PDFKit", "import UIKit", "PDFTools"],
+    "ReaderView.swift": ["import SwiftUI", "DocumentToolsView"],
 }
 for name, needles in expected_imports.items():
     for needle in needles:
@@ -220,6 +229,10 @@ definitions = {
     "ReadingBackground": "PDFKitView.swift",
     "SignatureStore": "DrawingViews.swift",
     "DocumentScanner": "ScannerView.swift",
+    "PDFTools": "PDFTools.swift",
+    "ProgressSink": "PDFTools.swift",
+    "DocumentToolsView": "DocumentToolsView.swift",
+    "PhotoPicker": "SystemSheets.swift",
 }
 for type_name, defining_file in definitions.items():
     pattern = rf"(?:final class|class|struct|enum)\s+{type_name}\b"
@@ -235,6 +248,10 @@ uses = [
     ("LibraryStore", "ReaderView.swift"), ("LibraryStore", "LibraryView.swift"),
     ("SignatureStore", "ReaderView.swift"), ("ReadingBackground", "SettingsView.swift"),
     ("DocumentScanner", "LibraryView.swift"),
+    ("PDFTools", "ReaderController.swift"), ("PDFTools", "DocumentToolsView.swift"),
+    ("PDFTools", "LibraryView.swift"), ("ProgressSink", "DocumentToolsView.swift"),
+    ("ProgressSink", "LibraryView.swift"), ("DocumentToolsView", "ReaderView.swift"),
+    ("PhotoPicker", "LibraryView.swift"), ("DocumentToolsView", "ReaderView.swift"),
 ]
 for type_name, using_file in uses:
     check(re.search(rf"\b{type_name}\b", swift_texts[using_file]) is not None,
@@ -250,6 +267,54 @@ check("importScan(images:" in swift_texts["LibraryView.swift"],
       "LibraryView routes finished scans into LibraryStore.importScan")
 check("VNDocumentCameraViewControllerDelegate" in swift_texts["ScannerView.swift"],
       "ScannerView coordinator is the document camera delegate")
+
+print("== Build 3 pro tools ==")
+tools_text = swift_texts["PDFTools.swift"]
+check("func ocrDocument(" in tools_text,
+      "PDFTools.ocrDocument builds a searchable copy")
+check("VNRecognizeTextRequest" in tools_text and "recognitionLevel = .accurate" in tools_text,
+      "OCR uses the Vision recognizer at accurate level")
+check("setTextDrawingMode(.invisible)" in tools_text,
+      "OCR text layer is drawn invisibly (CoreText rendering mode)")
+check("func compressedDocument(" in tools_text,
+      "PDFTools.compressedDocument rebuilds pages as JPEG images")
+check("CompressQuality" in tools_text and "case screen" in tools_text
+      and "case balanced" in tools_text and "case print" in tools_text,
+      "compress presets are Screen / Balanced / Print")
+check("func extractedDocument(" in tools_text,
+      "PDFTools.extractedDocument splits a page range into a new document")
+check("func pageImages(" in tools_text,
+      "PDFTools.pageImages renders pages for PNG export")
+check("func rebuiltDocument(" in tools_text,
+      "PDFTools.rebuiltDocument rebuilds pages into a fresh (unencrypted) document")
+check("func redactedPage(" in tools_text,
+      "PDFTools.redactedPage rasterizes a page with redaction boxes burned in")
+check("func sampleBackgroundColor(" in tools_text,
+      "PDFTools.sampleBackgroundColor estimates the page background for cover & retype")
+check("func registerDocument(" in swift_texts["LibraryStore.swift"],
+      "LibraryStore.registerDocument saves tool outputs as library entries")
+check("writeOptions" in swift_texts["LibraryStore.swift"],
+      "LibraryStore.registerDocument passes PDFKit write options through")
+check("func importImages(images:" in swift_texts["LibraryStore.swift"],
+      "LibraryStore.importImages routes picked photos through the scan assembly")
+check("userPasswordOption" in swift_texts["DocumentToolsView.swift"]
+      and "ownerPasswordOption" in swift_texts["DocumentToolsView.swift"],
+      "protect flow writes with user + owner password options")
+check("Make Searchable (OCR)" in swift_texts["DocumentToolsView.swift"],
+      "tools sheet offers Make Searchable (OCR)")
+check("Make Searchable (OCR)" in swift_texts["LibraryView.swift"],
+      "library offers OCR right after a scan / photos import")
+check("func applyRedactions()" in swift_texts["ReaderController.swift"],
+      "ReaderController.applyRedactions burns pending boxes into their pages")
+check("func coverAndRetype(" in swift_texts["ReaderController.swift"],
+      "ReaderController.coverAndRetype paints a background patch + replacement text")
+check("func unlock(password:" in swift_texts["ReaderController.swift"],
+      "ReaderController.unlock tries a password against a locked document")
+check("pendingRedactionCount" in swift_texts["ReaderView.swift"]
+      and "applyRedactions" in swift_texts["ReaderView.swift"],
+      "ReaderView surfaces pending redaction state (count / apply / discard)")
+check("PHPickerViewControllerDelegate" in swift_texts["SystemSheets.swift"],
+      "SystemSheets PhotoPicker coordinator is the PHPicker delegate")
 
 print("== AdMob IDs (real, swapped in 2026-11-16) ==")
 adm = swift_texts["ADMOB-IDS.swift"]

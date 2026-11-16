@@ -26,7 +26,9 @@ PDFViewer/
                                 purchase, restore, transaction listener
   LibraryStore.swift            recents + page bookmarks (JSON in App
                                 Support); PDF files in Documents/Imports
-  LibraryView.swift             home: recents, favorites, open, merge mode
+  LibraryView.swift             home: recents, favorites, open, merge
+                                mode, photos-to-PDF, post-import OCR
+                                offer + progress
   ReaderView.swift              reader screen: toolbars, tool modes,
                                 sheets, ad session/block/page-guard wiring
   PDFKitView.swift              UIViewRepresentable PDFView + page-change
@@ -46,6 +48,16 @@ PDFViewer/
                                 (VNDocumentCameraViewController); the
                                 scan-to-PDF assembly is
                                 LibraryStore.importScan
+  PDFTools.swift                the build-3 tool engine: OCR text
+                                layers (Vision), compress, split /
+                                extract, page-image export, rebuild
+                                (password removal), redaction
+                                rasterizing, background-color sampling;
+                                ProgressSink = progress + cancel
+  DocumentToolsView.swift       the reader's PDF Tools sheet: OCR,
+                                compress, split, PNG export, password
+                                protect / remove — every tool saves a
+                                NEW library document
   Info.plist                    display name, GADApplicationIdentifier
                                 (real AdMob app ID), ATT string, SKAdNetwork
                                 list (same 50 as Santa), document type
@@ -107,6 +119,103 @@ the secondary style there).
   imports). No PrivacyInfo change: camera use is not a required-reason
   API, and no data is collected from scans.
 
+## Pro tools (added in build 3, 2026-11-16)
+
+Owner request: "fully functional PDF editor/scanner/viewer that
+people can use just like adobe." Build 3 adds the Acrobat-style
+toolbox. Where the tools live: the reader's overflow (⋯) menu →
+**PDF Tools…** (OCR, Compress, Split, PNG export, Password), the
+reader's Edit menu → **Fix & Hide** (Cover & Replace Text, Redact —
+both are drawn on the page, so they live with the other page
+tools), and the library's + menu → **Photos to PDF…**. Every
+file-producing tool works on a fresh copy of the library file and
+saves its result as a NEW library document via
+`LibraryStore.registerDocument` (which reopens the written file
+and verifies it — a protected copy must come back locked, an
+ordinary copy must not). The document being read is never modified
+by a tool.
+
+- **OCR — "Make Searchable (OCR)"** (tools sheet; also offered by
+  the library right after every scan and every photos import, with
+  a progress sheet + Cancel). Method: pages whose existing text
+  layer is non-trivial (>20 characters) pass through untouched.
+  Other pages are rendered at 200 dpi and recognized with the
+  on-device Vision framework (`VNRecognizeTextRequest`, accurate
+  level, language correction) — nothing leaves the device. The
+  page is then rebuilt as its rendered content plus the recognized
+  words drawn as **invisible text** (CoreText text rendering mode
+  `.invisible`) at the recognized bounding boxes, font sized to
+  each box and stretched to its width. Vision's normalized
+  bottom-left boxes map straight onto PDF page space. The result
+  is searchable, selectable, and copyable in any PDF reader.
+  Non-widget annotations are copied onto rebuilt pages; form
+  widgets are not carried (same caveat family as signature
+  burn-in).
+- **Compress** — every page re-rendered as a JPEG image (quality
+  0.72) at the chosen resolution — Screen 150 dpi / Balanced
+  200 dpi / Print 300 dpi — and saved as a new document. The sheet
+  shows the before → after file sizes. Honest limits: page content
+  becomes pictures, so text in the copy is NOT selectable (run OCR
+  on it if that matters); non-widget annotations are carried over
+  as annotations; and compressing a document that is already lean
+  text can produce a BIGGER copy — the sizes are shown either way,
+  nothing is hidden.
+- **Split / Extract** — a From/To page range saved as its own
+  library document (`PDFTools.extractedDocument`); the source
+  keeps all its pages.
+- **Convert** — (a) **Photos to PDF**: the library + menu's
+  PHPicker flow (multi-select, no permission prompt) assembles
+  picked photos into a PDF through the same letter-box assembly
+  as scans (`LibraryStore.importImages` → `importScan`), then
+  offers OCR like a scan. (b) **PDF → images**: the tools sheet
+  renders a page range at 200 dpi and shares real PNG files via
+  the share sheet (Save Image puts them in Photos;
+  `NSPhotoLibraryAddUsageDescription` covers that string).
+- **Protect / remove password** — Protect writes a copy with
+  PDFKit write options `.userPasswordOption` +
+  `.ownerPasswordOption` set to the same user-entered password
+  (the copy asks for it before opening; the original is
+  unchanged). Remove: the user enters the current password; the
+  file is loaded fresh, unlocked, and its pages are **rebuilt
+  into a brand-new document** before saving — this rebuild is
+  load-bearing, because `PDFDocument.write(to:)` on a document
+  loaded from an encrypted file preserves the source encryption
+  dictionary, so a plain re-save would still prompt. Opening a
+  locked document in the reader now prompts for its password
+  (session-only unlock). Tools other than Password are gated off
+  for encrypted documents: they work on the saved file, which is
+  locked even while an unlocked copy is being read — the sheet
+  says to save an unlocked copy and run tools on that.
+- **Redact** (Edit menu → Redact…) — drag black boxes over
+  anything sensitive on the current page; the hint bar counts the
+  boxes and carries **Apply** / Clear / Done. Boxes are in-memory
+  only until Apply; leaving the mode without Apply discards them
+  WITH a notice (on screen they look like redactions — the app
+  says plainly that they are not). Apply method (the honest,
+  standard one): each affected page is **rasterized at 300 dpi
+  with the boxes painted solid black and the raster becomes the
+  new page** — the covered text is removed from the file, not
+  hidden under a drawing. Consequences, all deliberate:
+  annotations on a redacted page are NOT carried over (an
+  annotation could itself hold the redacted text); the redacted
+  page's text layer is gone for the whole page (it is a picture
+  now — OCR can rebuild searchability); a redacted page's
+  rotation is not re-applied (the page is rebuilt upright in
+  media-box space).
+- **Edit text — "Cover & Replace Text…"** (Edit menu). Acrobat's
+  font-matching in-place text edit is out of scope and is NOT
+  faked. The practical equivalent, labeled as covering/replacing
+  in the UI: drag over the words; the app samples the page's
+  background color around the rectangle (small patches just
+  outside its corners/edges, averaged from a 144-dpi render) and
+  paints a patch in that color, then places the typed replacement
+  as a text box on top (font size scaled to the covered height).
+  Both halves are ordinary annotations — committed on save,
+  removable with the eraser. **The original words remain in the
+  file underneath the patch** — fine for fixing a typo on a form,
+  useless as privacy protection; the editor sheet says so and
+  points at Redact for secrets.
+
 ## Editing specifics & honest limitations
 
 - **Highlight/underline** apply to the current text selection, split by
@@ -132,7 +241,7 @@ the secondary style there).
   ride along with each page). Delete keeps at least one page.
 - **Search** uses `PDFDocument.findString` on a background task; huge
   scanned documents may be slow, and image-only PDFs have no text to
-  find (no OCR in v1).
+  find until they go through Make Searchable (OCR) — see Pro tools.
 - Device family is iPhone-only (`TARGETED_DEVICE_FAMILY = "1"`,
   portrait), matching the sibling pipeline. Widening to iPad/landscape
   is a project-setting change plus layout checks, deliberately left for
@@ -308,3 +417,15 @@ the product is missing.
   multi-page flow, the permission prompt on first use and the
   denied-permission alert + Settings shortcut, cancel creating no
   document, and a saved scan opening/annotating like any import.
+- Device-only checks for build 3 (pro tools): OCR accuracy and
+  text-layer alignment on a real scan (search + copy a recognized
+  word in the searchable copy, and in another reader); compress
+  sizes on a real scan-heavy file vs a lean text file; the
+  protected copy actually prompting for its password in another
+  app, and the unlocked copy opening with none; redaction verified
+  by extracting the output page's text (the covered words must be
+  absent, not just invisible); cover & retype patch color match on
+  white and tinted pages; rotated pages through the rasterizing
+  tools (OCR / compress / redact rebuild pages upright in
+  media-box space — check a rotated page before trusting it);
+  PNG export landing in Photos via Save Image.
