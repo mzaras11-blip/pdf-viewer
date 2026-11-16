@@ -22,7 +22,7 @@ final class StoreManager: ObservableObject {
     /// didSet. AdManager reads this from timers and ad-SDK delegate
     /// callbacks, which are not main-actor isolated. All writes happen
     /// on the main actor; the single-Bool read is race-benign.
-    nonisolated private static var ownedSnapshot = false
+    nonisolated(unsafe) private static var ownedSnapshot = false
     nonisolated static var removeAdsOwnedSnapshot: Bool { ownedSnapshot }
     /// The App Store product, once loaded (carries the real price).
     @Published private(set) var product: Product?
