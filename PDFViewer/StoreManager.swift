@@ -15,7 +15,15 @@ final class StoreManager: ObservableObject {
     static let removeAdsProductID = "com.swishgame.pdfviewer.remove_ads"
 
     /// True when the Remove Ads entitlement is currently held.
-    @Published private(set) var removeAdsOwned = false
+    @Published private(set) var removeAdsOwned = false {
+        didSet { Self.ownedSnapshot = removeAdsOwned }
+    }
+    /// Non-isolated snapshot of `removeAdsOwned`, kept in sync by its
+    /// didSet. AdManager reads this from timers and ad-SDK delegate
+    /// callbacks, which are not main-actor isolated. All writes happen
+    /// on the main actor; the single-Bool read is race-benign.
+    nonisolated private static var ownedSnapshot = false
+    nonisolated static var removeAdsOwnedSnapshot: Bool { ownedSnapshot }
     /// The App Store product, once loaded (carries the real price).
     @Published private(set) var product: Product?
     @Published private(set) var isPurchasing = false

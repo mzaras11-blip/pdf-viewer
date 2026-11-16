@@ -149,6 +149,31 @@ in App Store Connect before the first TestFlight build that should
 sell it; the code degrades gracefully (shows the $4.99 label) while
 the product is missing.
 
+## Pipeline status (2026-11-16)
+
+- **GitHub:** repo created and pushed — https://github.com/mzaras11-blip/pdf-viewer
+  (public; project at root, sibling layout; push helper `~/workspace/pdf-viewer/push_to_github.py`).
+  Pre-push audit: no secrets in the tree (placeholders only); checker 95/95.
+  Note: the GitHub API token CAN create repos now (verified firsthand this
+  run — `POST /user/repos` succeeded), contrary to the older pipeline notes.
+- **Codemagic:** app registered via API — app ID `6afb39047f6c11bd3902822e`
+  ("pdf-viewer", settingsSource: file, codemagic.yaml picked up).
+  `CERTIFICATE_PRIVATE_KEY` set in group `certificate_credentials` from
+  `cert_private_key_v2.pem` (if the signed build rejects the cert, swap to
+  `cert_private_key.pem` and rebuild). First compile = `ios-unsigned`
+  workflow, build `6afb392cb72d83c1457c74eb` (build index 2; an identical
+  build #1 was queued by the helper's first POST — same commit 7e31a4ac).
+- **Pages (live):** landing https://mzaras11-blip.github.io/pdf-viewer/ ·
+  support https://mzaras11-blip.github.io/pdf-viewer/support.html ·
+  privacy https://mzaras11-blip.github.io/pdf-viewer/privacy.html
+  (sources in `~/workspace/pdf-viewer/pages/`).
+- **Still blocked on browser/owner steps (as of this note):** App Store
+  Connect app record creation (the ASC API cannot create apps — web UI
+  only), AdMob app + banner/interstitial unit creation (AdMob console),
+  then the signed `ios-workflow` build to TestFlight, the Remove Ads IAP
+  (API-able once the app record exists), listing metadata, and
+  screenshots + the pre-submission device recording (owner's iPhone).
+
 ## Verification
 
 - `tools/check_project.py` — run it. It parses both plists, validates

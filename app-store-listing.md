@@ -43,7 +43,9 @@ pdf,viewer,editor,annotate,sign,signature,fill form,highlight,merge,scanner,docu
 
 ## Support / Marketing Notes
 
-- Support URL: (set when the support page is published)
+- Support URL: https://mzaras11-blip.github.io/pdf-viewer/support.html
+- Privacy Policy URL: https://mzaras11-blip.github.io/pdf-viewer/privacy.html
+- Marketing URL: https://mzaras11-blip.github.io/pdf-viewer/
 - Privacy: the app shows ads served by Google AdMob — one small banner, and one full-screen ad after about every five minutes of active reading. AdMob may use your device's advertising identifier to personalize ads; on first launch the app asks for tracking permission (App Tracking Transparency), and you will still see ads if you decline — they just won't be personalized. A one-time Remove Ads in-app purchase disables all ads. Documents, signatures, and library data are stored only on the device and are never uploaded. The app runs no analytics of its own.
 
 ## Screenshot Captions

@@ -90,7 +90,7 @@ final class AdManager: NSObject, ObservableObject {
     }
 
     /// Remove Ads ownership is the master switch for every ad path.
-    private var removeAdsOwned: Bool { StoreManager.shared.removeAdsOwned }
+    private var removeAdsOwned: Bool { StoreManager.removeAdsOwnedSnapshot }
 
     private override init() {
         super.init()
