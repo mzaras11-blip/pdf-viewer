@@ -370,6 +370,30 @@ the product is missing.
   on the upload log + the build-1 pattern, not an ASC screenshot.)
   Also still owed before submission: the live ASC description needs
   the SCAN bullet added (noted in app-store-listing.md).
+- **Build 3 — Acrobat-style pro tools (2026-11-16):** owner asked
+  for a "fully functional PDF editor/scanner/viewer that people
+  can use just like adobe." Added `PDFTools.swift` +
+  `DocumentToolsView.swift` and the reader/library wiring (see the
+  Pro tools section above): OCR, compress, split/extract, photos→
+  PDF + PDF→PNG, password protect/remove, redaction burn-in, and
+  cover & retype. Build number bumped the project way:
+  `CFBundleVersion` 2 → 3 in Info.plist and
+  `CURRENT_PROJECT_VERSION = 3` in both target configurations;
+  version stays 1.0. Checker grew to **162/162**. Pushed as commits
+  `736c7398` (feature) and `eaa9a3b5` (compile fix). First
+  Codemagic attempt `6afb8f1593fe764abf9c15bb` failed the archive
+  step on exactly one Swift error — the PhotoPicker coordinator's
+  DispatchGroup notify closure needed an explicit `self.` — fixed
+  in `eaa9a3b5`. Second build **`6afb8fd2faf9a7341bcb03d8`**
+  finished with **every step successful**; the artefact is IPA
+  **1.0 (3)** and the publishing log ends "UPLOAD SUCCEEDED with
+  no errors … Following submissions will start shortly after App
+  Store Connect completes processing of uploaded artifacts:
+  TestFlight" — the same upload pattern as builds 1–2, so build 3
+  reaches the Internal Testers group (automatic distribution)
+  when ASC finishes processing. Still owed before submission: the
+  live ASC description needs the SCAN bullet plus the seven
+  build-3 bullets (noted in app-store-listing.md).
 - **Browser-bound — could NOT be done via API (2026-11-16):** the ASC
   API needs the team Issuer ID to mint a JWT; it is **not stored
   anywhere on this VM** (re-verified this run: secrets dir holds only
