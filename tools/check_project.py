@@ -5,7 +5,7 @@ There is no Xcode / Swift toolchain on this VM, so this checks
 everything that can be checked statically:
 
   1. Info.plist + PrivacyInfo.xcprivacy parse and carry the expected
-     keys (placeholder AdMob app ID, export-compliance flag, the
+     keys (real AdMob app ID, export-compliance flag, the
      50-item SKAdNetwork list copied from the Santa build).
   2. Asset catalogs parse; the app icon is exactly 1024x1024, RGB,
      with no alpha channel.
@@ -18,7 +18,7 @@ everything that can be checked statically:
   5. Swift sources: balanced delimiters (comments/strings stripped),
      expected imports, and the cross-file type references the app is
      built around (AdManager, StoreManager, ReaderController, ...).
-  6. The placeholder AdMob IDs are exactly where BUILD-NOTES.md says.
+  6. The real AdMob IDs are exactly where BUILD-NOTES.md says.
 
 Exit code 0 = all checks passed.
 """
@@ -52,8 +52,8 @@ print("== Plists ==")
 with open(SRC_DIR / "Info.plist", "rb") as f:
     info = plistlib.load(f)
 check(info.get("CFBundleDisplayName") == "PDF Viewer & Editor", "Info.plist display name")
-check(info.get("GADApplicationIdentifier") == "ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY",
-      "Info.plist carries the placeholder AdMob app ID")
+check(info.get("GADApplicationIdentifier") == "ca-app-pub-9461680459080238~8969876020",
+      "Info.plist carries the real AdMob app ID")
 check(info.get("ITSAppUsesNonExemptEncryption") is False, "ITSAppUsesNonExemptEncryption = false")
 check(len(info.get("SKAdNetworkItems", [])) == 50, "SKAdNetworkItems has 50 entries (Santa parity)",
       f"got {len(info.get('SKAdNetworkItems', []))}")
@@ -235,13 +235,13 @@ check("com.swishgame.pdfviewer.remove_ads" in swift_texts["StoreManager.swift"],
 check("interstitialInterval: TimeInterval = 300" in swift_texts["AdManager.swift"],
       "interstitial interval is 300s (owner's ~5 minutes)")
 
-print("== Placeholder AdMob IDs ==")
+print("== AdMob IDs (real, swapped in 2026-11-16) ==")
 adm = swift_texts["ADMOB-IDS.swift"]
-check("ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY" in adm, "ADMOB-IDS.swift app ID placeholder")
-check("ca-app-pub-XXXXXXXXXXXXXXXX/AAAAAAAAAA" in adm, "ADMOB-IDS.swift banner placeholder")
-check("ca-app-pub-XXXXXXXXXXXXXXXX/BBBBBBBBBB" in adm, "ADMOB-IDS.swift interstitial placeholder")
-check("9461680459080238" not in adm and "9461680459080238" not in json.dumps(info),
-      "no real publisher IDs leaked into placeholders")
+check("ca-app-pub-9461680459080238~8969876020" in adm, "ADMOB-IDS.swift real app ID")
+check("ca-app-pub-9461680459080238/7587677446" in adm, "ADMOB-IDS.swift real banner unit")
+check("ca-app-pub-9461680459080238/8796992346" in adm, "ADMOB-IDS.swift real interstitial unit")
+check("XXXXXXXXXXXXXXXX" not in adm and "XXXXXXXXXXXXXXXX" not in json.dumps(info),
+      "no placeholder AdMob IDs remain")
 
 print()
 print(f"{passes} passed, {len(failures)} failed")
