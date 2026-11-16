@@ -19,7 +19,7 @@ PDFViewer.xcodeproj/            target "PDFViewer", one shared scheme
 PDFViewer/
   PDFViewerApp.swift            @main; RootView = library + banner strip;
                                 scene-phase + onOpenURL wiring; ATT kickoff
-  ADMOB-IDS.swift               ⚠️ placeholder AdMob IDs (see below)
+  ADMOB-IDS.swift               real AdMob IDs (see below)
   AdManager.swift               banner + timed-interstitial coordinator;
                                 AdBannerStrip / BannerAdView
   StoreManager.swift            StoreKit 2: Remove Ads entitlement,
@@ -43,7 +43,7 @@ PDFViewer/
                                 about
   SystemSheets.swift            UIDocumentPicker + share sheet wrappers
   Info.plist                    display name, GADApplicationIdentifier
-                                (placeholder), ATT string, SKAdNetwork
+                                (real AdMob app ID), ATT string, SKAdNetwork
                                 list (same 50 as Santa), document type
                                 for "Open in…" (com.adobe.pdf)
   PrivacyInfo.xcprivacy         same as siblings (UserDefaults CA92.1)
@@ -130,23 +130,23 @@ after a failed banner load).
    load and interstitial presentation. Once owned, the banner never
    loads, the timer stops, and any pending interstitial is dropped.
 
-### ⚠️ Placeholder AdMob IDs — replace in the pipeline phase
+### AdMob IDs — REAL (swapped in 2026-11-16)
 
-Real IDs are created in the AdMob console during account setup. Until
-then these obvious fakes are in place (ads simply never load; the app
-is fully usable):
+Created in the AdMob console and swapped into the code (commit
+`ade3e689`); `tools/check_project.py` now validates these exact values
+and that no placeholders remain (95/95):
 
-| What | Where | Placeholder |
+| What | Where | Value |
 |---|---|---|
-| AdMob app ID | `PDFViewer/Info.plist` → `GADApplicationIdentifier` | `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY` |
-| Banner unit | `PDFViewer/ADMOB-IDS.swift` → `AdMobIDs.bannerUnitID` | `ca-app-pub-XXXXXXXXXXXXXXXX/AAAAAAAAAA` |
-| Interstitial unit | `PDFViewer/ADMOB-IDS.swift` → `AdMobIDs.interstitialUnitID` | `ca-app-pub-XXXXXXXXXXXXXXXX/BBBBBBBBBB` |
+| AdMob app ID | `PDFViewer/Info.plist` → `GADApplicationIdentifier` (duplicated as `AdMobIDs.appID`) | `ca-app-pub-9461680459080238~8969876020` |
+| Banner unit | `PDFViewer/ADMOB-IDS.swift` → `AdMobIDs.bannerUnitID` | `ca-app-pub-9461680459080238/7587677446` |
+| Interstitial unit | `PDFViewer/ADMOB-IDS.swift` → `AdMobIDs.interstitialUnitID` | `ca-app-pub-9461680459080238/8796992346` |
 
-The app ID is duplicated as `AdMobIDs.appID` for reference. When the
-real app is created, its ID follows the sibling shape
-(`ca-app-pub-9461680459080238~…`). Also create the Remove Ads product
-in App Store Connect before the first TestFlight build that should
-sell it; the code degrades gracefully (shows the $4.99 label) while
+The AdMob app is not yet linked to the App Store listing (the app is
+not live), so ad serving may be limited until the store link is made
+after launch — same as the sibling launches. The Remove Ads product
+still needs creating in App Store Connect (browser-bound, see pipeline
+status); the code degrades gracefully (shows the $4.99 label) while
 the product is missing.
 
 ## Pipeline status (2026-11-16)
@@ -174,12 +174,48 @@ the product is missing.
   support https://mzaras11-blip.github.io/pdf-viewer/support.html ·
   privacy https://mzaras11-blip.github.io/pdf-viewer/privacy.html
   (sources in `~/workspace/pdf-viewer/pages/`).
-- **Still blocked on browser/owner steps (as of this note):** App Store
-  Connect app record creation (the ASC API cannot create apps — web UI
-  only), AdMob app + banner/interstitial unit creation (AdMob console),
-  then the signed `ios-workflow` build to TestFlight, the Remove Ads IAP
-  (API-able once the app record exists), listing metadata, and
-  screenshots + the pre-submission device recording (owner's iPhone).
+- **App Store Connect record (created via web UI 2026-11-16):**
+  "PDF Viewer & Editor", Apple ID **6835581432**, bundle
+  com.swishgame.pdfviewer, SKU pdfviewer001, version 1.0 in
+  "Prepare for Submission".
+- **AdMob (created 2026-11-16):** app
+  `ca-app-pub-9461680459080238~8969876020`, banner
+  `ca-app-pub-9461680459080238/7587677446`, interstitial
+  `ca-app-pub-9461680459080238/8796992346` — real IDs swapped into the
+  code and pushed (commit `ade3e689`, checker 95/95).
+- **Signed build → TestFlight (2026-11-16):** Codemagic `ios-workflow`
+  build `6afb5c90ca40c6ef3d1d7cc7` finished with every step successful
+  (signing files created at runtime, no `ios_signing` block). IPA =
+  version **1.0, build 1**, uploaded to App Store Connect and
+  **processing completed** (ASC build
+  `97d77280-39cf-45fa-a2cb-b3e53ac49301`). The Codemagic distribution
+  task then stopped at the final step — submitting build 1 to
+  TestFlight **beta review (external testing)** — because the app has
+  no Beta App Information (feedback email) or Beta App Review
+  Information (contact name / phone / email) yet. The build itself is
+  in TestFlight (internal testing unaffected); external submission
+  just needs that test-info form filled:
+  https://appstoreconnect.apple.com/apps/6835581432/testflight/test-info
+- **Browser-bound — could NOT be done via API (2026-11-16):** the ASC
+  API needs the team Issuer ID to mint a JWT; it is **not stored
+  anywhere on this VM** (re-verified this run: secrets dir holds only
+  the .p8 keys; dated memory notes 2026-10-19 and 2026-10-21 record it
+  lives only in Codemagic's environment, and Codemagic's API returns
+  the values masked). So the following remain for a browser session in
+  App Store Connect:
+  1. **Remove Ads IAP** — create non-consumable
+     `com.swishgame.pdfviewer.remove_ads`, $4.99 USD base price,
+     description from `app-store-listing.md`, and attach it to the
+     1.0 version.
+  2. **Listing metadata** — name/subtitle/description/keywords/
+     categories (Utilities / Productivity) and support + privacy URLs
+     from `app-store-listing.md`.
+  3. **Privacy label + age rating** questionnaires.
+  4. **TestFlight test info** (feedback email + beta review contact)
+     so build 1 can go to external beta review.
+  5. **Screenshots + the pre-submission device recording** (owner's
+     iPhone) — then, and only then, submit for review. **Nothing has
+     been submitted for review.**
 
 ## Verification
 
@@ -190,10 +226,12 @@ the product is missing.
   target / Info.plist path in build settings, confirms the scheme
   points at the target, scans Swift sources for balanced delimiters
   and expected cross-file type references, and confirms the
-  placeholder AdMob IDs are the ones in place.
-- **There is no Swift toolchain or Xcode on this VM**, so no file here
-  has been compiled. The first real compile is the Codemagic
-  `ios-unsigned` workflow (or the signed `ios-workflow`).
+  real AdMob IDs are the ones in place.
+- **There is no Swift toolchain or Xcode on this VM**, so nothing is
+  compiled locally — but the code has compiled for real in Codemagic:
+  the `ios-unsigned` workflow passed 2026-11-16, and the signed
+  `ios-workflow` build 1.0 (1) passed and reached TestFlight the same
+  day (see Pipeline status).
 - Device-only checks for the first TestFlight build: annotation commit
   positions (especially ink on zoomed/rotated pages), signature
   burn-in on rotated pages, form-field saving, the interstitial's
